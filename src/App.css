@@ -1,0 +1,28 @@
+/* Sidebar nav links */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  color: #6b7280;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  cursor: pointer;
+  margin-bottom: 2px;
+}
+.sidebar-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.sidebar-link.active {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+/* Modal animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
