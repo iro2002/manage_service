@@ -1,5 +1,6 @@
 import express from 'express';
 import mysql from 'mysql2/promise';
+import crypto from 'crypto';
 import pool from '../db.js';
 import authMiddleware from '../middleware/auth.js';
 import { requireSuperAdmin } from '../middleware/auth.js';
@@ -9,13 +10,41 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(requireSuperAdmin);
 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'; 
+const ALGORITHM = 'aes-256-cbc';
+
+function decrypt(hash) {
+  const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY), Buffer.from(hash.iv, 'hex'));
+  let decrypted = decipher.update(Buffer.from(hash.encryptedData, 'hex'));
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
+
 router.post('/', async (req, res) => {
-  const { host, port, user, password } = req.body;
+  const { host, port, user, password, configId } = req.body;
   let connectionPool = pool;
   let isCustom = false;
 
   try {
-    if (host && user) {
+    if (configId) {
+      // Fetch saved config from database
+      const [rows] = await pool.query('SELECT host, port, db_username, encrypted_password, iv FROM saved_db_configs WHERE id = ?', [configId]);
+      if (rows.length === 0) return res.status(404).json({ error: 'Saved configuration not found.' });
+      
+      const config = rows[0];
+      const decPassword = decrypt({ iv: config.iv, encryptedData: config.encrypted_password });
+      
+      isCustom = true;
+      connectionPool = mysql.createPool({
+        host: config.host,
+        port: config.port || 3306,
+        user: config.db_username,
+        password: decPassword,
+        waitForConnections: true,
+        connectionLimit: 1,
+        queueLimit: 0
+      });
+    } else if (host && user) {
       isCustom = true;
       connectionPool = mysql.createPool({
         host: host,

@@ -66,3 +66,18 @@ CREATE TABLE IF NOT EXISTS `laptop_history` (
   `created_at`  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`laptopId`) REFERENCES `laptops`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  Table: saved_db_configs
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `saved_db_configs` (
+  `id`                 INT AUTO_INCREMENT PRIMARY KEY,
+  `alias_name`         VARCHAR(255) NOT NULL,
+  `host`               VARCHAR(255) NOT NULL,
+  `port`               VARCHAR(50)  DEFAULT '3306',
+  `db_username`        VARCHAR(255) NOT NULL,
+  `encrypted_password` TEXT         NOT NULL,
+  `iv`                 VARCHAR(255) NOT NULL,
+  `created_by`         VARCHAR(255) NOT NULL,
+  `created_at`         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
