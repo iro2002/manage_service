@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LayoutDashboard, LogOut, Monitor, ChevronLeft, ChevronRight, Users, Database } from "lucide-react";
+import { LayoutDashboard, LogOut, Monitor, ChevronLeft, ChevronRight, Users, Database, GitBranch, Home, Laptop } from "lucide-react";
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuth();
@@ -14,6 +14,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const initials = user?.email?.charAt(0).toUpperCase() ?? "A";
   const emailDisplay = user?.email ?? "";
   const isSuperAdmin = user?.role === "super_admin";
+  const canViewGitLab = user?.role === "super_admin" || user?.role === "global_admin";
 
   return (
     <aside
@@ -55,11 +56,21 @@ export default function Sidebar({ collapsed, onToggle }) {
         <NavLink
           to="/"
           end
+          title="Home"
+          className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+          style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+        >
+          <Home size={16} style={{ flexShrink: 0 }} />
+          {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Home</span>}
+        </NavLink>
+
+        <NavLink
+          to="/laptops"
           title="Laptop Management"
           className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
           style={{ justifyContent: collapsed ? "center" : "flex-start" }}
         >
-          <LayoutDashboard size={16} style={{ flexShrink: 0 }} />
+          <Laptop size={16} style={{ flexShrink: 0 }} />
           {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Laptop Management</span>}
         </NavLink>
 
@@ -74,7 +85,7 @@ export default function Sidebar({ collapsed, onToggle }) {
               <Users size={16} style={{ flexShrink: 0 }} />
               {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>User Management</span>}
             </NavLink>
-            <NavLink
+              <NavLink
               to="/db-users"
               title="Database Privileges"
               className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
@@ -84,6 +95,17 @@ export default function Sidebar({ collapsed, onToggle }) {
               {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Database Privileges</span>}
             </NavLink>
           </>
+        )}
+        {canViewGitLab && (
+          <NavLink
+            to="/gitlab"
+            title="GitLab Access"
+            className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <GitBranch size={16} style={{ flexShrink: 0 }} />
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>GitLab Access</span>}
+          </NavLink>
         )}
       </nav>
 

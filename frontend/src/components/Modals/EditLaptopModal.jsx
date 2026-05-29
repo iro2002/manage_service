@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Laptop, CalendarDays, Building2, Hash, BadgeDollarSign, MessageSquare, AlertCircle, CheckCircle2, Loader2, Edit3, Save, User, FileText } from "lucide-react";
+import { X, Laptop, CalendarDays, Building2, Hash, BadgeDollarSign, MessageSquare, AlertCircle, CheckCircle2, Loader2, Edit3, Save, User, FileText, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateLaptop, checkUnique } from "../../services/laptopService";
 import ConfirmModal from "./ConfirmModal";
@@ -23,6 +23,7 @@ export default function EditLaptopModal({ laptop, existingModels = [], existingV
     model: laptop?.model || "",
     hrRefNumber: laptop?.hrRefNumber || "",
     serialNo: laptop?.serialNo || "",
+    currentEmail: laptop?.currentEmail || "",
     dateOfDelivery: safeDate(laptop?.dateOfDelivery),
     vendorName: laptop?.vendorName || "",
     ratePerMonth: laptop?.ratePerMonth || "",
@@ -72,6 +73,7 @@ export default function EditLaptopModal({ laptop, existingModels = [], existingV
       await updateLaptop(laptop.id, { 
         ...form, model: form.model.trim(), serialNo: form.serialNo.trim(), 
         hrRefNumber: form.hrRefNumber.trim(), ratePerMonth: Number(form.ratePerMonth) || 0, 
+        currentEmail: form.currentEmail.trim(), 
         windowsLicense: form.windowsLicense, msOfficePackage: form.msOfficePackage,
         adminAccountEnabled: form.adminAccountEnabled, massStorageDisabled: form.massStorageDisabled
       });
@@ -182,6 +184,7 @@ export default function EditLaptopModal({ laptop, existingModels = [], existingV
               <InfoRow icon={Laptop} label="Laptop Model" value={laptop.model} />
               <InfoRow icon={Hash} label="Serial Number" value={laptop.serialNo} mono />
               <InfoRow icon={FileText} label="HR Reference Number" value={laptop.hrRefNumber} mono />
+              {laptop.status === "Assigned" && <InfoRow icon={Mail} label="Employee Email" value={laptop.currentEmail} />}
               <InfoRow icon={CalendarDays} label="Date of Delivery" value={laptop.dateOfDelivery ? safeDate(laptop.dateOfDelivery) : ""} />
               <InfoRow icon={Building2} label="Vendor Name" value={laptop.vendorName} />
               <InfoRow icon={BadgeDollarSign} label="Monthly Rental (RM)" value={laptop.ratePerMonth ? `RM ${Number(laptop.ratePerMonth).toLocaleString()}` : ""} />
@@ -215,6 +218,13 @@ export default function EditLaptopModal({ laptop, existingModels = [], existingV
                   {renderStatus(hrRefStatus)}
                 </div>
 
+                {laptop.status === "Assigned" && (
+                  <div>
+                    <Label icon={Mail}>Employee Email</Label>
+                    <input type="email" placeholder="name@company.com" value={form.currentEmail} onChange={set("currentEmail")} style={fieldStyle} />
+                  </div>
+                )}
+
                 <div>
                   <Label icon={CalendarDays}>Delivery Date</Label>
                   <input type="date" value={form.dateOfDelivery} onChange={set("dateOfDelivery")} style={fieldStyle} />
@@ -237,10 +247,17 @@ export default function EditLaptopModal({ laptop, existingModels = [], existingV
                     <input type="checkbox" checked={form.windowsLicense} onChange={(e) => setForm(f => ({ ...f, windowsLicense: e.target.checked }))} />
                     Windows License Active
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151", cursor: "pointer" }}>
-                    <input type="checkbox" checked={form.msOfficePackage} onChange={(e) => setForm(f => ({ ...f, msOfficePackage: e.target.checked }))} />
-                    MS Office Package Active
-                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151", cursor: "pointer" }}>
+                      <input type="checkbox" checked={form.msOfficePackage} onChange={(e) => setForm(f => ({ ...f, msOfficePackage: e.target.checked }))} />
+                      MS Office Package Active
+                    </label>
+                    {(!laptop.msOfficePackage && form.msOfficePackage && form.currentEmail && laptop.status === "Assigned") && (
+                      <div style={{ fontSize: 11, color: "#15803d", padding: "2px 6px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, marginTop: 2 }}>
+                        ✓ Activation email will be sent to {form.currentEmail}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ gridColumn: "1 / -1", display: "flex", gap: 20, flexWrap: "wrap", marginTop: -6 }}>

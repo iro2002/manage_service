@@ -82,7 +82,7 @@ export default function AddUserModal({ onClose }) {
               name="username"
               value={form.username}
               onChange={handleChange}
-              placeholder="e.g. johndoe123"
+              placeholder=""
               className="form-input"
               id="add-user-username-input"
               autoFocus
@@ -96,7 +96,7 @@ export default function AddUserModal({ onClose }) {
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="e.g. John Doe"
+              placeholder=""
               className="form-input"
               id="add-user-name-input"
             />
@@ -110,7 +110,7 @@ export default function AddUserModal({ onClose }) {
               type="email"
               value={form.email}
               onChange={handleChange}
-              placeholder="e.g. john@company.com"
+              placeholder="e.g. name@earrow.net"
               className="form-input"
               id="add-user-email-input"
             />
