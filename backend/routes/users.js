@@ -14,7 +14,7 @@ router.use(requireSuperAdmin);
 router.get('/', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC'
+      'SELECT id, username, name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC'
     );
     res.json(users);
   } catch (err) {
@@ -25,10 +25,10 @@ router.get('/', async (req, res) => {
 
 // ─── POST /api/users — Create a new user ────────────────────────────────────
 router.post('/', async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { username, name, email, password, role } = req.body;
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Name, email, and password are required.' });
+  if (!username || !name || !email || !password) {
+    return res.status(400).json({ error: 'Username, name, email, and password are required.' });
   }
 
   const validRoles = ['admin', 'super_admin'];
@@ -38,21 +38,28 @@ router.post('/', async (req, res) => {
 
   try {
     // Check if email already exists
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
+    const [existingEmail] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingEmail.length > 0) {
       return res.status(409).json({ error: 'A user with this email already exists.' });
+    }
+
+    // Check if username already exists
+    const [existingUsername] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
+    if (existingUsername.length > 0) {
+      return res.status(409).json({ error: 'A user with this username already exists.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRole = role || 'admin';
 
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-      [name.trim(), email.trim().toLowerCase(), hashedPassword, userRole]
+      'INSERT INTO users (username, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
+      [username.trim(), name.trim(), email.trim().toLowerCase(), hashedPassword, userRole]
     );
 
     res.status(201).json({
       id: result.insertId,
+      username: username.trim(),
       name: name.trim(),
       email: email.trim().toLowerCase(),
       role: userRole,
@@ -68,7 +75,7 @@ router.post('/', async (req, res) => {
 // ─── PUT /api/users/:id — Update user details ──────────────────────────────
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, email, role, is_active } = req.body;
+  const { username, name, email, role, is_active } = req.body;
 
   try {
     // Check user exists
@@ -97,6 +104,14 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Check username uniqueness if changing username
+    if (username && username.trim() !== targetUser.username) {
+      const [existing] = await pool.query('SELECT id FROM users WHERE username = ? AND id != ?', [username.trim(), id]);
+      if (existing.length > 0) {
+        return res.status(409).json({ error: 'A user with this username already exists.' });
+      }
+    }
+
     const validRoles = ['admin', 'super_admin'];
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be "admin" or "super_admin".' });
@@ -106,6 +121,7 @@ router.put('/:id', async (req, res) => {
     const updates = [];
     const values = [];
 
+    if (username !== undefined) { updates.push('username = ?'); values.push(username.trim()); }
     if (name !== undefined) { updates.push('name = ?'); values.push(name.trim()); }
     if (email !== undefined) { updates.push('email = ?'); values.push(email.trim().toLowerCase()); }
     if (role !== undefined) { updates.push('role = ?'); values.push(role); }
@@ -120,7 +136,7 @@ router.put('/:id', async (req, res) => {
 
     // Fetch updated user
     const [updated] = await pool.query(
-      'SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE id = ?',
+      'SELECT id, username, name, email, role, is_active, created_at, updated_at FROM users WHERE id = ?',
       [id]
     );
 

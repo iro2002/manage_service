@@ -6,16 +6,16 @@ import pool from '../db.js';
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
   }
 
   try {
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [users] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
     if (users.length === 0) {
-      return res.status(401).json({ code: 'auth/user-not-found', error: 'No account found with this email.' });
+      return res.status(401).json({ code: 'auth/user-not-found', error: 'No account found with this username.' });
     }
 
     const user = users[0];
@@ -34,6 +34,7 @@ router.post('/login', async (req, res) => {
     const payload = {
       user: {
         id: user.id,
+        username: user.username,
         name: user.name,
         email: user.email,
         role: user.role
