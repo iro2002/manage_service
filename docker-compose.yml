@@ -9,12 +9,21 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
-    env_file:
-      - ./backend/.env
     environment:
-      # Override DB_HOST because inside Docker, localhost = the container itself.
-      # host.docker.internal points to your Windows host machine where MySQL is running.
+      PORT: "5000"
       DB_HOST: "host.docker.internal"
+      DB_PORT: "3306"
+      DB_USER: "root"
+      DB_PASSWORD: "" # Empty password as per your local backend/.env
+      DB_NAME: "manage_service_db"
+      JWT_SECRET: "dew23ijkek9ej2nj3n29dujdnioed28i2"
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: "chaminduirosh927@gmail.com"
+      SMTP_PASS: "uzwy asgb ramx zjzk"
+      SMTP_FROM_NAME: "Manage Service"
+      COMPANY_NAME: "Earrow"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

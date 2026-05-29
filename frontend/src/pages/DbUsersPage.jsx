@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchDbUsers } from "../services/dbUsersService";
 import { fetchSavedDbConfigs, saveDbConfig, deleteDbConfig } from "../services/dbConfigsService";
-import { fetchDbEmployeeProfiles, createDbEmployeeProfile, deleteDbEmployeeProfile } from "../services/dbEmployeeProfilesService";
-import { Loader2, Database, ShieldAlert, CheckCircle2, XCircle, Search, Columns, FileText, Download, Save, Trash2, ChevronDown, UserPlus, X, Users } from "lucide-react";
+import { Loader2, Database, ShieldAlert, CheckCircle2, XCircle, Search, Columns, FileText, Download, Save, Trash2, ChevronDown, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { createPortal } from "react-dom";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const IDLE = "idle", LOADING = "loading", ERROR = "error";
-
-const DEPARTMENTS = ["Development", "QA",  "Manage Service", "Support", "Other"];
 
 // ─── Portal dropdown ─────────────────────────────────────────────────────────
 function PortalDropdown({ triggerRef, onClose, children, width = 220 }) {
@@ -45,19 +42,12 @@ function PortalDropdown({ triggerRef, onClose, children, width = 220 }) {
 
 export default function DbUsersPage() {
   const [users, setUsers] = useState([]);
-  const [employeeProfiles, setEmployeeProfiles] = useState([]);
   const [status, setStatus] = useState(LOADING);
   const [errorMsg, setErrorMsg] = useState("");
   
   const [configs, setConfigs] = useState([]);
   const [creds, setCreds] = useState({ configId: "", host: "", port: "3306", user: "", password: "", alias_name: "", saveConfig: false });
   const [showConfig, setShowConfig] = useState(false);
-
-  const [showAddProfile, setShowAddProfile] = useState(false);
-  const [showProfilesModal, setShowProfilesModal] = useState(false);
-  const [newProfile, setNewProfile] = useState({ mysql_username: "", employee_name: "", department: "" });
-  const [addingProfile, setAddingProfile] = useState(false);
-  const [showAllUsers, setShowAllUsers] = useState(false);
 
   // Filters
   const [dbFilter, setDbFilter] = useState("");
@@ -69,34 +59,30 @@ export default function DbUsersPage() {
   const [colOpen, setColOpen] = useState(false);
   const colRef = useRef(null);
   const [visibleCols, setVisibleCols] = useState({
-    empName: true, dept: true, user: true, host: true, db: true,
+    user: true, host: true, db: true,
     select: true, insert: true, update: true, delete: true, create: true, drop: true
   });
 
   const COL_LABELS = {
-    empName: "Employee Name", dept: "Department", user: "MySQL User", host: "Host", db: "Database",
+    user: "MySQL User", host: "Host", db: "Database",
     select: "Select", insert: "Insert", update: "Update", delete: "Delete", create: "Create", drop: "Drop"
   };
 
   useEffect(() => {
-    loadInitialData();
+    loadUsers();
+    loadConfigs();
   }, []);
 
-  const loadInitialData = async () => {
+  const loadConfigs = async () => {
     try {
-      const [confData, profilesData] = await Promise.all([
-        fetchSavedDbConfigs(),
-        fetchDbEmployeeProfiles()
-      ]);
-      setConfigs(confData);
-      setEmployeeProfiles(profilesData || []);
+      const data = await fetchSavedDbConfigs();
+      setConfigs(data);
     } catch (err) {
       console.error(err);
     }
-    loadDbUsers();
   };
 
-  const loadDbUsers = async (customCreds = null) => {
+  const loadUsers = async (customCreds = null) => {
     setStatus(LOADING);
     try {
       const data = await fetchDbUsers(customCreds || {});
@@ -129,19 +115,18 @@ export default function DbUsersPage() {
           password: creds.password
         });
         toast.success("Configuration saved!");
-        const confData = await fetchSavedDbConfigs();
-        setConfigs(confData);
+        await loadConfigs();
       } catch (err) {
         toast.error("Failed to save config: " + err.message);
       }
     }
 
-    loadDbUsers(connectPayload.host || connectPayload.configId ? connectPayload : {});
+    loadUsers(connectPayload.host || connectPayload.configId ? connectPayload : {});
   };
 
   const handleClear = () => {
     setCreds({ configId: "", host: "", port: "3306", user: "", password: "", alias_name: "", saveConfig: false });
-    loadDbUsers({});
+    loadUsers({});
   };
 
   const handleDeleteConfig = async (id, e) => {
@@ -151,44 +136,10 @@ export default function DbUsersPage() {
     try {
       await deleteDbConfig(id);
       toast.success("Configuration deleted");
-      const confData = await fetchSavedDbConfigs();
-      setConfigs(confData);
+      loadConfigs();
       if (creds.configId === id) handleClear();
     } catch (err) {
       toast.error("Failed to delete");
-    }
-  };
-
-  const handleAddProfile = async (e) => {
-    e.preventDefault();
-    if (!newProfile.mysql_username || !newProfile.employee_name) {
-      toast.error("MySQL Username and Employee Name are required.");
-      return;
-    }
-    setAddingProfile(true);
-    try {
-      await createDbEmployeeProfile(newProfile);
-      toast.success("Employee Profile Registered!");
-      setShowAddProfile(false);
-      setNewProfile({ mysql_username: "", employee_name: "", department: "" });
-      const profilesData = await fetchDbEmployeeProfiles();
-      setEmployeeProfiles(profilesData || []);
-    } catch (err) {
-      toast.error(err.message || "Failed to create profile");
-    } finally {
-      setAddingProfile(false);
-    }
-  };
-
-  const handleDeleteProfile = async (id) => {
-    if (!window.confirm("Delete this employee mapping profile? This does not delete the actual MySQL user.")) return;
-    try {
-      await deleteDbEmployeeProfile(id);
-      toast.success("Profile mapping deleted.");
-      const profilesData = await fetchDbEmployeeProfiles();
-      setEmployeeProfiles(profilesData || []);
-    } catch (err) {
-      toast.error("Failed to delete profile.");
     }
   };
 
@@ -197,45 +148,27 @@ export default function DbUsersPage() {
   // --- Process Data ---
   let processedRows = [];
   users.forEach(u => {
-    // 1. Cross-reference: only show MySQL users that exist in our Employee Profiles list
-    const profile = employeeProfiles.find(p => p.mysql_username === u.user);
-    if (!showAllUsers && !profile) return;
-
-    // Check user filter (can search by MySQL user or Employee Name or Department)
-    if (userFilter) {
-      const q = userFilter.toLowerCase();
-      const match = u.user.toLowerCase().includes(q) || 
-                    (profile?.employee_name || "").toLowerCase().includes(q) || 
-                    (profile?.department || "").toLowerCase().includes(q);
-      if (!match) return;
-    }
-
+    // Check user filter
+    if (userFilter && !u.user.toLowerCase().includes(userFilter.toLowerCase())) return;
     // Check super filter
     if (onlySuper && !u.global_privileges.super) return;
 
     let hasGlobal = Object.values(u.global_privileges).some(val => val === true);
     
-    // Base object containing the matched employee data
-    const baseRow = {
-      profileId: profile?.id || null,
-      empName: profile?.employee_name || (showAllUsers && !profile ? u.user : "—"),
-      dept: profile?.department || "—"
-    };
-
     // If onlyGlobal is checked, we only push the global row (if they have one)
     if (!dbFilter && (hasGlobal || onlyGlobal)) {
       if (!onlyGlobal || hasGlobal) {
-        processedRows.push({ ...baseRow, type: 'global', user: u.user, host: u.host, db: '*.* (Global)', ...u.global_privileges, _original: u });
+        processedRows.push({ type: 'global', user: u.user, host: u.host, db: '*.* (Global)', ...u.global_privileges, _original: u });
       }
     } else if (!dbFilter && !hasGlobal && u.databases.length === 0 && !onlyGlobal) {
       // User exists but has zero privileges
-      processedRows.push({ ...baseRow, type: 'global', user: u.user, host: u.host, db: 'No Privileges', ...u.global_privileges, _original: u });
+      processedRows.push({ type: 'global', user: u.user, host: u.host, db: 'No Privileges', ...u.global_privileges, _original: u });
     }
 
     if (!onlyGlobal) {
       u.databases.forEach(db => {
         if (dbFilter && !db.db.toLowerCase().includes(dbFilter.toLowerCase())) return;
-        processedRows.push({ ...baseRow, type: 'db', user: u.user, host: u.host, db: db.db, ...db, _original: u });
+        processedRows.push({ type: 'db', user: u.user, host: u.host, db: db.db, ...db, _original: u });
       });
     }
   });
@@ -248,12 +181,10 @@ export default function DbUsersPage() {
 
   // --- Exports ---
   const exportCSV = () => {
-    const headers = Object.keys(COL_LABELS).filter(k => visibleCols[k] && k !== 'actions').map(k => COL_LABELS[k]);
+    const headers = Object.keys(COL_LABELS).filter(k => visibleCols[k]).map(k => COL_LABELS[k]);
     const csvRows = [headers.join(",")];
     processedRows.forEach(r => {
       const rowData = [];
-      if (visibleCols.empName) rowData.push(r.empName);
-      if (visibleCols.dept) rowData.push(r.dept);
       if (visibleCols.user) rowData.push(r.user);
       if (visibleCols.host) rowData.push(r.host);
       if (visibleCols.db) rowData.push(r.db);
@@ -268,18 +199,16 @@ export default function DbUsersPage() {
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "Employee_DB_Privileges.csv"; a.click();
+    a.href = url; a.download = "DB_Privileges.csv"; a.click();
   };
 
   const exportPDF = () => {
     const doc = new jsPDF("landscape");
     doc.setFontSize(14);
-    doc.text("Employee Database Privileges Report", 14, 15);
-    const headers = Object.keys(COL_LABELS).filter(k => visibleCols[k] && k !== 'actions').map(k => COL_LABELS[k]);
+    doc.text("Database Privileges Report", 14, 15);
+    const headers = Object.keys(COL_LABELS).filter(k => visibleCols[k]).map(k => COL_LABELS[k]);
     const body = processedRows.map(r => {
       const rowData = [];
-      if (visibleCols.empName) rowData.push(r.empName);
-      if (visibleCols.dept) rowData.push(r.dept);
       if (visibleCols.user) rowData.push(r.user);
       if (visibleCols.host) rowData.push(r.host);
       if (visibleCols.db) rowData.push(r.db);
@@ -292,7 +221,7 @@ export default function DbUsersPage() {
       return rowData;
     });
     autoTable(doc, { head: [headers], body, startY: 20, theme: "grid", headStyles: { fillColor: [79, 70, 229] } });
-    doc.save("Employee_DB_Privileges.pdf");
+    doc.save("DB_Privileges.pdf");
   };
 
   if (status === LOADING) {
@@ -312,7 +241,7 @@ export default function DbUsersPage() {
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
         <p className="text-gray-600 max-w-md text-center mb-6">{errorMsg}</p>
-        <button onClick={() => loadDbUsers(creds)} className="btn btn-primary">Retry Connection</button>
+        <button onClick={() => loadUsers(creds)} className="btn btn-primary">Retry Connection</button>
       </div>
     );
   }
@@ -323,23 +252,15 @@ export default function DbUsersPage() {
         <div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Database className="text-indigo-600" />
-            Employee Database Access
+            MySQL Server Privileges
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Analyze database access strictly for your registered employees.
+            Analyze access levels for all databases on the connected MySQL server.
           </p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowConfig(!showConfig)} className="btn btn-secondary text-sm">
-            {showConfig ? "Hide Config" : "Remote Server"}
-          </button>
-          <button onClick={() => setShowProfilesModal(true)} className="btn btn-secondary text-sm flex items-center gap-2">
-            <Users size={16} /> View Profiles
-          </button>
-          <button onClick={() => setShowAddProfile(true)} className="btn btn-primary text-sm bg-indigo-600 flex items-center gap-2">
-            <UserPlus size={16} /> Register Profile
-          </button>
-        </div>
+        <button onClick={() => setShowConfig(!showConfig)} className="btn btn-secondary text-sm">
+          {showConfig ? "Hide Connection Config" : "Configure Remote Server"}
+        </button>
       </div>
 
       {showConfig && (
@@ -407,7 +328,7 @@ export default function DbUsersPage() {
         <div className="flex flex-wrap items-center gap-3 flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-            <input type="text" placeholder="Search Employees..." className="form-input text-sm pl-9 py-1.5 w-48" value={userFilter} onChange={e => setUserFilter(e.target.value)} />
+            <input type="text" placeholder="Filter by User..." className="form-input text-sm pl-9 py-1.5 w-48" value={userFilter} onChange={e => setUserFilter(e.target.value)} />
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -420,10 +341,6 @@ export default function DbUsersPage() {
           <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-gray-50">
             <input type="checkbox" checked={onlyGlobal} onChange={e => setOnlyGlobal(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
             Global Privileges Only
-          </label>
-          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-gray-50">
-            <input type="checkbox" checked={showAllUsers} onChange={e => setShowAllUsers(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-            Show All DB Users
           </label>
         </div>
 
@@ -462,8 +379,6 @@ export default function DbUsersPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                {visibleCols.empName && <th className="py-3 px-4">{COL_LABELS.empName}</th>}
-                {visibleCols.dept && <th className="py-3 px-4">{COL_LABELS.dept}</th>}
                 {visibleCols.user && <th className="py-3 px-4">{COL_LABELS.user}</th>}
                 {visibleCols.host && <th className="py-3 px-4">{COL_LABELS.host}</th>}
                 {visibleCols.db && <th className="py-3 px-4">{COL_LABELS.db}</th>}
@@ -478,8 +393,8 @@ export default function DbUsersPage() {
             <tbody className="text-sm divide-y divide-gray-100">
               {processedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-gray-500">
-                    No matching employee records found. Register an Employee Profile to map a MySQL user.
+                  <td colSpan={10} className="py-12 text-center text-gray-500">
+                    No matching records found.
                   </td>
                 </tr>
               ) : (
@@ -487,18 +402,8 @@ export default function DbUsersPage() {
                   const isGlobal = r.type === 'global';
                   return (
                     <tr key={`${r.user}-${r.host}-${r.db}-${idx}`} className={idx % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50/30 hover:bg-gray-50"}>
-                      {visibleCols.empName && (
-                        <td className="py-3 px-4 font-bold text-gray-900 border-l-2 border-transparent">
-                          {r.empName}
-                        </td>
-                      )}
-                      {visibleCols.dept && (
-                        <td className="py-3 px-4 text-indigo-700 font-medium">
-                          {r.dept}
-                        </td>
-                      )}
                       {visibleCols.user && (
-                        <td className="py-3 px-4 text-gray-600 font-medium font-mono text-xs">
+                        <td className="py-3 px-4 font-medium text-gray-900 border-l-2 border-transparent">
                           {r.user}
                         </td>
                       )}
@@ -539,132 +444,6 @@ export default function DbUsersPage() {
           </table>
         </div>
       </div>
-
-      {/* Add Profile Modal */}
-      {showAddProfile && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={() => setShowAddProfile(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: "fadeIn 0.15s ease-out" }}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <UserPlus size={18} className="text-indigo-600" /> Register Employee Profile
-              </h3>
-              <button onClick={() => setShowAddProfile(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddProfile} className="px-6 py-5 space-y-4">
-              <p className="text-sm text-gray-500 mb-4">
-                This maps a real employee to a MySQL database user. <strong>Make sure the MySQL Username matches exactly</strong> with the user you created in phpMyAdmin.
-              </p>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newProfile.employee_name}
-                  onChange={e => setNewProfile({...newProfile, employee_name: e.target.value})}
-                  className="form-input w-full"
-                  placeholder=""
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <select
-                  required
-                  value={newProfile.department}
-                  onChange={e => setNewProfile({...newProfile, department: e.target.value})}
-                  className="form-select w-full"
-                >
-                  <option value="">Select Department...</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">MySQL Username</label>
-                <input
-                  type="text"
-                  required
-                  value={newProfile.mysql_username}
-                  onChange={e => setNewProfile({...newProfile, mysql_username: e.target.value})}
-                  className="form-input w-full font-mono text-sm"
-                  placeholder=""
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
-                <button type="button" onClick={() => setShowAddProfile(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={addingProfile} className="btn btn-primary bg-indigo-600">
-                  {addingProfile ? <Loader2 size={16} className="animate-spin" /> : "Save Profile Mapping"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Profiles Modal */}
-      {showProfilesModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={() => setShowProfilesModal(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: "fadeIn 0.15s ease-out" }}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Users size={18} className="text-indigo-600" /> Registered Employee Profiles
-              </h3>
-              <button onClick={() => setShowProfilesModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto p-6">
-              {employeeProfiles.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No profiles registered yet.</p>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 font-semibold border-b">
-                      <th className="py-2 px-4">Employee Name</th>
-                      <th className="py-2 px-4">Department</th>
-                      <th className="py-2 px-4">MySQL User</th>
-                      <th className="py-2 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-sm">
-                    {employeeProfiles.map(p => (
-                      <tr key={p.id} className="hover:bg-gray-50">
-                        <td className="py-2 px-4 font-medium text-gray-900">{p.employee_name}</td>
-                        <td className="py-2 px-4 text-indigo-600">{p.department}</td>
-                        <td className="py-2 px-4 text-gray-600 font-mono text-xs">{p.mysql_username}</td>
-                        <td className="py-2 px-4 text-right">
-                          <button onClick={() => handleDeleteProfile(p.id)} className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition" title="Delete Profile Mapping">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

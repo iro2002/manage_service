@@ -8,8 +8,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import DbUsersPage from "./pages/DbUsersPage";
-import GitLabPage from "./pages/GitLabPage";
-import HomePage from "./pages/HomePage";
 import AppPage from "./components/Layout/AppPage";
 import "./App.css";
 
@@ -33,16 +31,6 @@ function AppRoutes() {
             <Routes>
               <Route
                 path="/"
-                element={
-                  <ProtectedRoute>
-                    <AppPage title="Dashboard" subtitle={`Welcome back, ${user?.email?.split('@')[0] || 'Admin'}`}>
-                      <HomePage />
-                    </AppPage>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/laptops"
                 element={
                   <ProtectedRoute>
                     <AppPage title="Laptop Management" subtitle="Track and manage company laptops">
@@ -72,20 +60,6 @@ function AppRoutes() {
                     {user.role === "super_admin" ? (
                       <AppPage title="Database Privileges" subtitle="View MySQL database user access">
                         <DbUsersPage />
-                      </AppPage>
-                    ) : (
-                      <Navigate to="/" replace />
-                    )}
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/gitlab"
-                element={
-                  <ProtectedRoute>
-                    {(user.role === "super_admin" || user.role === "global_admin") ? (
-                      <AppPage title="GitLab Repository Access" subtitle="View repository access and member permissions">
-                        <GitLabPage />
                       </AppPage>
                     ) : (
                       <Navigate to="/" replace />
