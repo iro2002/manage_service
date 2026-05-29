@@ -1,12 +1,11 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Create transporter — configure via .env
- * Strips spaces from Gmail App Passwords since SMTP auth doesn't use them.
+ * Create SMTP transporter
  */
 function createTransporter() {
   const rawPass = process.env.SMTP_PASS || '';
-  const cleanPass = rawPass.replace(/\s+/g, ''); 
+  const cleanPass = rawPass.replace(/\s+/g, '');
 
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -20,16 +19,375 @@ function createTransporter() {
 }
 
 /**
- * Send laptop assignment email with usage policy to the employee.
- * * @param {Object} opts
- * @param {string} opts.toEmail      - Employee's email address
- * @param {string} opts.userName     - Employee's full name
- * @param {string} opts.model        - Laptop model
- * @param {string} opts.serialNo     - Laptop serial number
- * @param {string} opts.hrRefNumber  - HR reference number
- * @param {string} opts.handoverDate - Date of handover
- * @param {string} opts.department   - Department
- * @param {string} opts.performedBy  - Admin who assigned
+ * Professional Enterprise Email Template
+ */
+function generateEmailHtml({
+  title = 'Laptop Assignment Confirmation',
+  introText = 'A company device has been successfully provisioned and assigned to you. Please review the assigned asset and software details below.',
+  userName,
+  companyName,
+  model,
+  serialNo,
+  hrRefNumber,
+  formattedDate,
+  windowsLicense,
+  msOfficePackage,
+  performedBy,
+}) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7fb;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1e293b;
+  }
+
+  table {
+    border-spacing: 0;
+    width: 100%;
+  }
+
+  .wrapper {
+    width: 100%;
+    table-layout: fixed;
+    background-color: #f4f7fb;
+    padding: 40px 0;
+  }
+
+  .main {
+    background-color: #ffffff;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 720px;
+    border-spacing: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+    padding: 40px;
+    color: #ffffff;
+  }
+
+  .header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  .header p {
+    margin-top: 10px;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .content {
+    padding: 40px;
+  }
+
+  .greeting {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #334155;
+    margin-bottom: 30px;
+  }
+
+  .section {
+    margin-bottom: 28px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }
+
+  .info-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .info-table td {
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+  }
+
+  .info-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .label {
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .value {
+    text-align: right;
+    color: #0f172a;
+    font-weight: 700;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .active {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .inactive {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .policy {
+    background: #fff7ed;
+    border-left: 4px solid #f97316;
+    padding: 22px;
+    border-radius: 0 12px 12px 0;
+    margin-top: 30px;
+  }
+
+  .policy h3 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    color: #c2410c;
+  }
+
+  .policy ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #7c2d12;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .policy li {
+    margin-bottom: 10px;
+  }
+
+  .notice {
+    margin-top: 30px;
+    font-size: 13px;
+    color: #64748b;
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  .footer {
+    background: #f8fafc;
+    padding: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+    border-top: 1px solid #e2e8f0;
+    line-height: 1.8;
+  }
+
+  .footer strong {
+    color: #0f172a;
+  }
+
+  @media screen and (max-width: 600px) {
+    .content {
+      padding: 25px !important;
+    }
+
+    .header {
+      padding: 30px !important;
+    }
+
+    .header h1 {
+      font-size: 22px !important;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <table class="main">
+
+    <tr>
+      <td class="header">
+        <h1>${title}</h1>
+        <p>${companyName} — Manage Service System</p>
+      </td>
+    </tr>
+
+    <tr>
+      <td class="content">
+
+        <div class="greeting">
+          <p>Dear <strong>${userName}</strong>,</p>
+
+          <p>
+            ${introText}
+          </p>
+
+          <p>
+            Please review the asset allocation details below and ensure compliance with the organization's IT usage and security policies.
+          </p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            Hardware Information
+          </div>
+
+          <div class="info-box">
+
+            <table class="info-table">
+
+              <tr>
+                <td class="label">Device Model</td>
+                <td class="value">${model || 'N/A'}</td>
+              </tr>
+
+              <tr>
+                <td class="label">Serial Number</td>
+                <td class="value">${serialNo || 'N/A'}</td>
+              </tr>
+
+              <tr>
+                <td class="label">HR Reference</td>
+                <td class="value">${hrRefNumber || 'N/A'}</td>
+              </tr>
+
+              <tr>
+                <td class="label">Assignment Date</td>
+                <td class="value">${formattedDate}</td>
+              </tr>
+
+            </table>
+
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            Software & Licensing
+          </div>
+
+          <div class="info-box">
+
+            <table class="info-table">
+
+              <tr>
+                <td class="label">Windows License</td>
+                <td class="value">
+                  <span class="badge ${windowsLicense ? 'active' : 'inactive'}">
+                    ${windowsLicense ? 'Activated' : 'Not Licensed'}
+                  </span>
+                </td>
+              </tr>
+
+              <tr>
+                <td class="label">Microsoft Office</td>
+                <td class="value">
+                  <span class="badge ${msOfficePackage ? 'active' : 'inactive'}">
+                    ${msOfficePackage ? 'Provisioned' : 'Not Assigned'}
+                  </span>
+                </td>
+              </tr>
+
+            </table>
+
+          </div>
+        </div>
+
+        <div class="policy">
+
+          <h3>Corporate Device Usage Policy</h3>
+
+          <ul>
+            <li>
+              This device remains the property of <strong>${companyName}</strong>.
+            </li>
+
+            <li>
+              The device is intended strictly for authorized business and operational activities.
+            </li>
+
+            <li>
+              Installation of unauthorized software, games, or personal applications is prohibited.
+            </li>
+
+            <li>
+              Users are responsible for maintaining the confidentiality of login credentials and company information.
+            </li>
+
+            <li>
+              Any loss, theft, malfunction, or security concern must be reported immediately to the IT department.
+            </li>
+
+            <li>
+              Company-approved cloud storage and security practices must be followed at all times.
+            </li>
+
+          </ul>
+
+        </div>
+
+        <div class="notice">
+
+          If you notice any discrepancy in the assigned asset details, please contact
+          <strong>${performedBy || 'the IT Department'}</strong> immediately.
+
+        </div>
+
+      </td>
+    </tr>
+
+    <tr>
+      <td class="footer">
+
+        <strong>${companyName}</strong><br>
+
+        Automated notification generated by the  Manage Service System.<br>
+
+        This is a system-generated email. Please do not reply directly to this message.
+
+      </td>
+    </tr>
+
+  </table>
+
+</div>
+
+</body>
+</html>
+`;
+}
+
+/**
+ * Send Assignment Email
  */
 export async function sendAssignmentEmail({
   toEmail,
@@ -40,165 +398,141 @@ export async function sendAssignmentEmail({
   handoverDate,
   department,
   performedBy,
+  windowsLicense,
+  msOfficePackage,
 }) {
   if (!toEmail) {
-    console.warn('[Email] Warning: No recipient email provided. Skipping email dispatch.');
-    return;
-  }
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.error('[Email] Error: SMTP credentials missing in .env. Skipping email dispatch.');
+    console.warn('[Email] No recipient email provided.');
     return;
   }
 
-  console.log(`[Email] Initiating laptop assignment notification to ${toEmail}...`);
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error('[Email] SMTP credentials missing.');
+    return;
+  }
 
   const transporter = createTransporter();
-  const fromName = process.env.SMTP_FROM_NAME || 'IT Asset Management';
+
+  const companyName =
+    process.env.COMPANY_NAME || 'Earrow Technologies Sdn Bhd';
+
+  const fromName =
+    process.env.SMTP_FROM_NAME || 'IT Asset Management';
+
   const fromEmail = process.env.SMTP_USER;
-  const companyName = process.env.COMPANY_NAME || 'Earrow Technologies Sdn Bhd';
 
-  const formattedDate = handoverDate
-    ? new Date(handoverDate).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' })
-    : new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' });
+  const formattedDate = new Date(
+    handoverDate || new Date()
+  ).toLocaleDateString('en-MY', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
 
-  // Professionally styled HTML Email Template with SVG Icon
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IT Asset Assignment Notification</title>
-  <style>
-    /* Reset & Base Styles */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; color: #333333; line-height: 1.6; }
-    
-    /* Container */
-    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e1e4e8; }
-    
-    /* Header */
-    .header { background-color: #0f172a; padding: 30px 40px; border-bottom: 4px solid #3b82f6; text-align: left; }
-    .header-top { display: flex; align-items: center; margin-bottom: 8px; }
-    .company-name { font-size: 12px; font-weight: 600; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; margin-left: 10px; }
-    .header h1 { font-size: 20px; font-weight: 600; color: #ffffff; margin: 0; }
-    
-    /* Content Body */
-    .content { padding: 40px; }
-    .greeting { font-size: 15px; color: #334155; margin-bottom: 25px; }
-    .greeting strong { color: #0f172a; }
-    
-    /* Section Titles */
-    .section-title { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 16px; margin-top: 30px; }
-    
-    /* Asset Table */
-    .asset-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; background-color: #f8fafc; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; }
-    .asset-table th, .asset-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-    .asset-table th { width: 40%; font-weight: 600; color: #475569; background-color: #f1f5f9; }
-    .asset-table td { color: #0f172a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .asset-table tr:last-child th, .asset-table tr:last-child td { border-bottom: none; }
-    
-    /* Policy List */
-    .policy-container { background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 0 6px 6px 0; margin-bottom: 25px; }
-    .policy-container p { font-size: 13px; font-weight: 600; color: #b45309; margin-bottom: 12px; }
-    .policy-list { list-style-type: none; padding-left: 0; }
-    .policy-list li { font-size: 13px; color: #4a5568; margin-bottom: 10px; padding-left: 20px; position: relative; }
-    .policy-list li::before { content: "•"; color: #f59e0b; font-weight: bold; position: absolute; left: 0; font-size: 18px; line-height: 1; top: -1px; }
-    .policy-list strong { color: #1a202c; }
-    
-    /* Acknowledgement */
-    .acknowledgement { font-size: 13px; color: #475569; background-color: #f1f5f9; padding: 16px 20px; border-radius: 6px; border: 1px solid #e2e8f0; }
-    
-    /* Footer */
-    .footer { background-color: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0; text-align: center; }
-    .footer p { font-size: 12px; color: #64748b; margin-bottom: 4px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="header-top">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-          <line x1="2" y1="20" x2="22" y2="20"></line>
-        </svg>
-        <span class="company-name">${companyName}</span>
-      </div>
-      <h1>IT Asset Assignment Notification</h1>
-    </div>
+  const html = generateEmailHtml({
+    userName,
+    companyName,
+    model,
+    serialNo,
+    hrRefNumber,
+    formattedDate,
+    windowsLicense,
+    msOfficePackage,
+    performedBy,
+  });
 
-    <div class="content">
-      <div class="greeting">
-        <p>Dear <strong>${userName}</strong>,</p>
-        <br />
-        <p>This is an official notification to confirm that a company laptop has been assigned to you as of <strong>${formattedDate}</strong>. Please review your asset details and the standard acceptable use policy below.</p>
-      </div>
-
-      <div class="section-title">Asset Record</div>
-      <table class="asset-table">
-        <tr>
-          <th>Device Model</th>
-          <td style="font-family: inherit;">${model || 'N/A'}</td>
-        </tr>
-        <tr>
-          <th>Serial Number</th>
-          <td>${serialNo || 'N/A'}</td>
-        </tr>
-        <tr>
-          <th>HR Reference</th>
-          <td>${hrRefNumber || 'N/A'}</td>
-        </tr>
-        <tr>
-          <th>Department</th>
-          <td style="font-family: inherit;">${department || 'N/A'}</td>
-        </tr>
-        <tr>
-          <th>Handover Date</th>
-          <td style="font-family: inherit;">${formattedDate}</td>
-        </tr>
-        <tr>
-          <th>Assigned By</th>
-          <td style="font-family: inherit;">${performedBy || 'System Administrator'}</td>
-        </tr>
-      </table>
-
-      <div class="section-title">Acceptable Use Policy</div>
-      <div class="policy-container">
-        <p>Standard Conditions of Use:</p>
-        <ul class="policy-list">
-          <li><strong>Intended Use:</strong> This device remains the exclusive property of ${companyName} and is provided strictly for authorized business purposes.</li>
-          <li><strong>Software & Security:</strong> Only IT-approved applications may be installed. Unauthorized software, personal applications, and games are strictly prohibited.</li>
-          <li><strong>Access Control:</strong> Do not share your login credentials. The device must only be operated by the assigned employee.</li>
-          <li><strong>Asset Protection:</strong> Ensure the device is safeguarded against loss, theft, or damage at all times. Use approved cloud storage; do not store critical data locally.</li>
-          <li><strong>Asset Return:</strong> The device and its accessories must be returned in good working condition upon separation from the company, role change, or at management's request.</li>
-          <li><strong>Monitoring & Compliance:</strong> In accordance with corporate IT policies, activity on this device may be monitored to ensure security and compliance.</li>
-        </ul>
-      </div>
-
-      <div class="acknowledgement">
-        <p>By proceeding to log in and utilize this device, you acknowledge receipt of the asset in good condition and agree to comply with the corporate IT policies outlined above.</p>
-        <br />
-        <p>If you discover any discrepancies in this record, please contact the IT Department or <strong>${performedBy || 'your system administrator'}</strong> immediately.</p>
-      </div>
-    </div>
-
-    <div class="footer">
-      <p>This is an automated message generated by the ${companyName} IT Asset Management System.</p>
-      <p>Please do not reply to this email.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  // Send the email with Try/Catch for better error handling
   try {
     await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
       to: toEmail,
-      subject: `[IT Asset] Laptop Assigned — ${model || 'New Device'}`,
+      subject: `[IT Asset] Laptop Assignment Confirmation`,
       html,
     });
-    console.log(`[Email] [SUCCESS] Assignment email sent successfully to ${toEmail}.`);
+
+    console.log(
+      `[Email] Assignment email sent successfully to ${toEmail}`
+    );
   } catch (error) {
-    console.error(`[Email] [FAILED] Failed to send assignment email to ${toEmail}:`, error);
+    console.error(
+      `[Email] Failed to send assignment email:`,
+      error
+    );
+  }
+}
+
+/**
+ * Send MS Office Activation Email
+ */
+export async function sendSoftwareActivationEmail({
+  toEmail,
+  userName,
+  model,
+  serialNo,
+  hrRefNumber,
+  handoverDate,
+  department,
+  performedBy,
+  windowsLicense,
+  msOfficePackage,
+}) {
+  if (!toEmail) {
+    console.warn('[Email] No recipient email provided.');
+    return;
+  }
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error('[Email] SMTP credentials missing.');
+    return;
+  }
+
+  const transporter = createTransporter();
+
+  const companyName =
+    process.env.COMPANY_NAME || 'Earrow Technologies Sdn Bhd';
+
+  const fromName =
+    process.env.SMTP_FROM_NAME || 'IT Asset Management';
+
+  const fromEmail = process.env.SMTP_USER;
+
+  const formattedDate = new Date(
+    handoverDate || new Date()
+  ).toLocaleDateString('en-MY', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const html = generateEmailHtml({
+    title: 'Software License Activated',
+    introText:
+      'Your Microsoft Office package has been successfully activated and provisioned for your assigned corporate device.',
+    userName,
+    companyName,
+    model,
+    serialNo,
+    hrRefNumber,
+    formattedDate,
+    windowsLicense,
+    msOfficePackage,
+    performedBy,
+  });
+
+  try {
+    await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: toEmail,
+      subject: `[IT Asset] Microsoft Office Activation`,
+      html,
+    });
+
+    console.log(
+      `[Email] Activation email sent successfully to ${toEmail}`
+    );
+  } catch (error) {
+    console.error(
+      `[Email] Failed to send activation email:`,
+      error
+    );
   }
 }

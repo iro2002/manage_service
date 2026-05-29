@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS `laptops` (
   `serialNo`        VARCHAR(255)   UNIQUE NOT NULL,
   `status`          VARCHAR(50)    NOT NULL,
   `currentUserName` VARCHAR(255)   DEFAULT '',
+  `currentEmail`    VARCHAR(255)   DEFAULT '',
   `handoverDate`    VARCHAR(50)    DEFAULT '',
   `department`      VARCHAR(100)   DEFAULT '',
   `comments`        TEXT,
@@ -80,4 +81,15 @@ CREATE TABLE IF NOT EXISTS `saved_db_configs` (
   `iv`                 VARCHAR(255) NOT NULL,
   `created_by`         VARCHAR(255) NOT NULL,
   `created_at`         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  Table: employee_db_profiles
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `employee_db_profiles` (
+  `id`             INT AUTO_INCREMENT PRIMARY KEY,
+  `mysql_username` VARCHAR(255) UNIQUE NOT NULL,
+  `employee_name`  VARCHAR(255) NOT NULL,
+  `department`     VARCHAR(100) DEFAULT '',
+  `created_at`     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

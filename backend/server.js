@@ -10,6 +10,9 @@ import laptopRoutes from './routes/laptops.js';
 import userRoutes from './routes/users.js';
 import dbUsersRoutes from './routes/db_users.js';
 import dbConfigsRoutes from './routes/db_configs.js';
+import dbEmployeeProfilesRoutes from './routes/db_employee_profiles.js';
+import gitlabRoutes from './routes/gitlab.js';
+import configRoutes from './routes/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +31,9 @@ app.use('/api/laptops', laptopRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/db-users', dbUsersRoutes);
 app.use('/api/db-configs', dbConfigsRoutes);
+app.use('/api/db-employee-profiles', dbEmployeeProfilesRoutes);
+app.use('/api/gitlab', gitlabRoutes);
+app.use('/api/config', configRoutes);
 
 const PORT = process.env.PORT || 5000;
 

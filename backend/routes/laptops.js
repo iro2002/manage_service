@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../db.js';
 import auth from '../middleware/auth.js';
-import { sendAssignmentEmail } from '../emailService.js';
+import { sendAssignmentEmail, sendSoftwareActivationEmail } from '../emailService.js';
 
 const router = express.Router();
 
@@ -96,11 +96,40 @@ router.put('/:id', auth, async (req, res) => {
     const fields = req.body;
     if (Object.keys(fields).length === 0) return res.status(400).json({ msg: 'No fields to update' });
 
+    // Fetch the current laptop to compare msOfficePackage status
+    const [currentRows] = await pool.query('SELECT * FROM laptops WHERE id = ?', [req.params.id]);
+    if (currentRows.length === 0) return res.status(404).json({ msg: 'Laptop not found' });
+    const currentLaptop = currentRows[0];
+
     const setClause = Object.keys(fields).map(k => `${k} = ?`).join(', ');
     const values = Object.values(fields).map(v => typeof v === 'boolean' ? (v ? 1 : 0) : v);
     values.push(req.params.id);
 
     await pool.query(`UPDATE laptops SET ${setClause} WHERE id = ?`, values);
+
+    // Check if MS Office was activated
+    const oldOffice = Boolean(currentLaptop.msOfficePackage);
+    const newOffice = fields.msOfficePackage !== undefined ? Boolean(fields.msOfficePackage) : oldOffice;
+    
+    // We get the email either from the updated fields or the current record
+    const userEmail = fields.currentEmail !== undefined ? fields.currentEmail : currentLaptop.currentEmail;
+
+    if (!oldOffice && newOffice && userEmail) {
+      // It flipped from false to true, and we have an email address
+      sendSoftwareActivationEmail({
+        toEmail: userEmail,
+        userName: currentLaptop.currentUserName,
+        model: fields.model || currentLaptop.model,
+        serialNo: fields.serialNo || currentLaptop.serialNo,
+        hrRefNumber: fields.hrRefNumber || currentLaptop.hrRefNumber,
+        handoverDate: currentLaptop.handoverDate,
+        department: currentLaptop.department,
+        performedBy: req.user.email,
+        windowsLicense: fields.windowsLicense !== undefined ? fields.windowsLicense : currentLaptop.windowsLicense,
+        msOfficePackage: true
+      }).catch((err) => console.error('[Email] Failed to send software activation email:', err.message));
+    }
+
     res.json({ msg: 'Laptop updated' });
   } catch (err) {
     console.error(err.message);
@@ -115,10 +144,11 @@ router.post('/:id/assign', auth, async (req, res) => {
     await connection.beginTransaction();
 
     const { laptop, assignData, performedBy } = req.body;
+    const userEmail = assignData.userEmail || '';
 
     await connection.query(
-      `UPDATE laptops SET status = ?, currentUserName = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
-      ['Assigned', assignData.userName, assignData.handoverDate, assignData.department, assignData.comments || '', req.params.id]
+      `UPDATE laptops SET status = ?, currentUserName = ?, currentEmail = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
+      ['Assigned', assignData.userName, userEmail, assignData.handoverDate, assignData.department, assignData.comments || '', req.params.id]
     );
 
     // When laptop is "With MS", currentUserName is empty — show 'Manage Service' as source
@@ -145,6 +175,8 @@ router.post('/:id/assign', auth, async (req, res) => {
         handoverDate: assignData.handoverDate,
         department:  assignData.department,
         performedBy: performedBy || req.user.email,
+        windowsLicense: laptop.windowsLicense,
+        msOfficePackage: laptop.msOfficePackage,
       }).catch((err) => console.error('[Email] Failed to send assignment email:', err.message));
     }
 
@@ -167,8 +199,8 @@ router.post('/:id/return-ms', auth, async (req, res) => {
     const { laptop, returnData, performedBy } = req.body;
 
     await connection.query(
-      `UPDATE laptops SET status = ?, currentUserName = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
-      ['With MS', '', '', '', returnData.comments || '', req.params.id]
+      `UPDATE laptops SET status = ?, currentUserName = ?, currentEmail = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
+      ['With MS', '', '', '', '', returnData.comments || '', req.params.id]
     );
 
     await connection.query(
@@ -197,8 +229,8 @@ router.post('/:id/return-vendor', auth, async (req, res) => {
     const { laptop, returnData, performedBy } = req.body;
 
     await connection.query(
-      `UPDATE laptops SET status = ?, currentUserName = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
-      ['Returned to Vendor', '', '', '', returnData.comments || '', req.params.id]
+      `UPDATE laptops SET status = ?, currentUserName = ?, currentEmail = ?, handoverDate = ?, department = ?, comments = ? WHERE id = ?`,
+      ['Returned to Vendor', '', '', '', '', returnData.comments || '', req.params.id]
     );
 
     // If currentUserName is empty, laptop was held by Manage Service
