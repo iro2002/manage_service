@@ -12,7 +12,7 @@ node_modules/
 
 # Production builds
 dist/
-dist-ssr/
+dist-ssr
 build/
 
 

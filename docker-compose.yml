@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  app-network:
+    driver: bridge
+
 services:
   backend:
     build:
@@ -17,6 +21,8 @@ services:
       DB_HOST: "host.docker.internal"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - app-network
 
   frontend:
     build:
@@ -25,6 +31,8 @@ services:
     container_name: manage_service_frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3002:3002"
     depends_on:
       - backend
+    networks:
+      - app-network
