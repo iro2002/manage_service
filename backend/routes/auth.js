@@ -53,8 +53,17 @@ router.post('/login', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Login error:', err.message);
+
+    const dbErrorCodes = ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ER_ACCESS_DENIED_ERROR', 'ER_BAD_DB_ERROR'];
+    if (dbErrorCodes.includes(err.code)) {
+      return res.status(503).json({
+        code: 'db/connection-error',
+        error: 'Cannot connect to the database. Please check your connection and try again.'
+      });
+    }
+
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
