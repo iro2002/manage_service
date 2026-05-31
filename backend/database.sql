@@ -93,3 +93,54 @@ CREATE TABLE IF NOT EXISTS `employee_db_profiles` (
   `department`     VARCHAR(100) DEFAULT '',
   `created_at`     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  Table: servers
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `servers` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `name`             VARCHAR(255) NOT NULL,
+  `server_type`      ENUM('internal', 'external') NOT NULL,
+  `cpu_cores`        VARCHAR(255) DEFAULT '',
+  `ram`              VARCHAR(255) DEFAULT '',
+  `root_disk`        VARCHAR(255) DEFAULT '',
+  `ip_address`       VARCHAR(255) DEFAULT '',
+  `os`               VARCHAR(255) DEFAULT '',
+  `current_version`  VARCHAR(255) DEFAULT '',
+  `php_version`      VARCHAR(255) DEFAULT '',
+  `mariadb_version`  VARCHAR(255) DEFAULT '',
+  `apache_version`   VARCHAR(255) DEFAULT '',
+  `status`           ENUM('active', 'inactive') DEFAULT 'active',
+  `last_update_date` DATE NULL,
+  `next_update_date` DATE NULL,
+  `created_at`       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  Table: server_disks
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `server_disks` (
+  `id`          INT AUTO_INCREMENT PRIMARY KEY,
+  `server_id`   INT NOT NULL,
+  `mount_point` VARCHAR(255) NOT NULL,
+  `disk_size`   VARCHAR(255) NOT NULL,
+  `created_at`  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`server_id`) REFERENCES `servers`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  Table: server_updates
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `server_updates` (
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `server_id`        INT NOT NULL,
+  `update_date`      DATE NOT NULL,
+  `next_update_date` DATE NOT NULL,
+  `update_type`      VARCHAR(255) NOT NULL,
+  `updated_by`       VARCHAR(255) NOT NULL,
+  `notes`            TEXT,
+  `created_at`       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`server_id`) REFERENCES `servers`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

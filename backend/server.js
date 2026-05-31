@@ -13,6 +13,7 @@ import dbConfigsRoutes from './routes/db_configs.js';
 import dbEmployeeProfilesRoutes from './routes/db_employee_profiles.js';
 import gitlabRoutes from './routes/gitlab.js';
 import configRoutes from './routes/config.js';
+import serverRoutes from './routes/servers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +45,7 @@ app.use('/api/db-configs', dbConfigsRoutes);
 app.use('/api/db-employee-profiles', dbEmployeeProfilesRoutes);
 app.use('/api/gitlab', gitlabRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/servers', serverRoutes);
 
 // ── Global error handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

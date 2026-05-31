@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import DbUsersPage from "./pages/DbUsersPage";
+import ServersPage from "./pages/ServersPage";
 import GitLabPage from "./pages/GitLabPage";
 import HomePage from "./pages/HomePage";
 import AppPage from "./components/Layout/AppPage";
@@ -79,6 +80,21 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/servers"
+                element={
+                  <ProtectedRoute>
+                    {user.role === "super_admin" ? (
+                      <AppPage title="Server Management" subtitle="Manage and monitor company servers">
+                        <ServersPage />
+                      </AppPage>
+                    ) : (
+                      <Navigate to="/" replace />
+                    )}
+                  </ProtectedRoute>
+                }
+              />
+
               <Route
                 path="/gitlab"
                 element={

@@ -245,17 +245,44 @@ export default function LaptopTable({
     onBulkEmail(selectedLaptops);
   };
 
+  // Helper: get the cell value for a given column id
+  const getCellValue = (col, l, idx) => {
+    switch (col) {
+      case "index":        return idx + 1;
+      case "model":        return l.model || "";
+      case "hrRef":        return l.hrRefNumber || "";
+      case "serial":       return l.serialNo || "";
+      case "deliveryDate": return l.dateOfDelivery ? format(new Date(l.dateOfDelivery), "dd MMM yyyy") : "";
+      case "user":         return l.currentUserName || "";
+      case "handoverDate": return l.handoverDate ? format(new Date(l.handoverDate), "dd MMM yyyy") : "";
+      case "department":   return l.department || "";
+      case "rate":         return l.ratePerMonth ? `Rs ${Number(l.ratePerMonth).toLocaleString()}` : "";
+      case "status":       return l.status || "";
+      case "adminAccount": return l.adminAccountEnabled ? "Enabled" : "Disabled";
+      case "massStorage":  return l.massStorageDisabled ? "Disabled" : "Enabled";
+      case "comments":     return l.comments || "";
+      default:             return "";
+    }
+  };
+
   const exportPDF = () => {
     try {
       const doc = new jsPDF();
-      doc.text("Laptops Export", 14, 15);
-      const tableData = filtered.map((l, i) => [
-        i + 1, l.model, l.serialNo, l.currentUserName || "N/A", l.department || "N/A", l.status
-      ]);
+      doc.text("Laptops Details", 14, 15);
+
+      // Only include visible columns
+      const visibleCols = AVAILABLE_COLUMNS.filter(c => visibleColumns.has(c.id));
+      const headers = visibleCols.map(c => c.label);
+      const tableData = filtered.map((l, i) =>
+        visibleCols.map(c => String(getCellValue(c.id, l, i)))
+      );
+
       autoTable(doc, {
-        head: [["#", "Model", "Serial No", "Current User", "Department", "Status"]],
+        head: [headers],
         body: tableData,
         startY: 20,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [79, 70, 229] },
       });
       doc.save("laptops_export.pdf");
     } catch (err) {
@@ -265,12 +292,15 @@ export default function LaptopTable({
   };
 
   const exportCSV = () => {
-    const headers = ["Model", "HR Ref", "Serial No", "Delivery Date", "Current User", "Handover Date", "Department", "Rate", "Status", "Comments"];
-    const rows = filtered.map(l => [
-      `"${l.model || ""}"`, `"${l.hrRefNumber || ""}"`, `"${l.serialNo || ""}"`, `"${l.dateOfDelivery || ""}"`,
-      `"${l.currentUserName || ""}"`, `"${l.handoverDate || ""}"`, `"${l.department || ""}"`, `"${l.ratePerMonth || ""}"`,
-      `"${l.status || ""}"`, `"${(l.comments || "").replace(/"/g, '""')}"`
-    ]);
+    // Only include visible columns
+    const visibleCols = AVAILABLE_COLUMNS.filter(c => visibleColumns.has(c.id));
+    const headers = visibleCols.map(c => c.label);
+    const rows = filtered.map((l, i) =>
+      visibleCols.map(c => {
+        const val = String(getCellValue(c.id, l, i));
+        return `"${val.replace(/"/g, '""')}"`;
+      })
+    );
     const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

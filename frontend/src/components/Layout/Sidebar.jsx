@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LayoutDashboard, LogOut, Monitor, ChevronLeft, ChevronRight, Users, Database, GitBranch, Home, Laptop } from "lucide-react";
+import { LayoutDashboard, LogOut, Monitor, ChevronLeft, ChevronRight, Users, Database, GitBranch, Home, Laptop, Server } from "lucide-react";
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuth();
@@ -84,6 +84,15 @@ export default function Sidebar({ collapsed, onToggle }) {
             >
               <Users size={16} style={{ flexShrink: 0 }} />
               {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>User Management</span>}
+            </NavLink>
+            <NavLink
+              to="/servers"
+              title="Server Management"
+              className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+              style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+            >
+              <Server size={16} style={{ flexShrink: 0 }} />
+              {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Server Management</span>}
             </NavLink>
               <NavLink
               to="/db-users"

@@ -3,8 +3,10 @@ import {
   GitBranch, Search, RefreshCw, ExternalLink, Users, Lock,
   Globe, Eye, ChevronDown, X, AlertCircle, Loader2, Shield,
   Code, Star, GitFork, AlertTriangle, CheckCircle, Filter,
-  ChevronRight, User, Calendar
+  ChevronRight, User, Calendar, Download, FileText, Table
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const API = "/api";
 
@@ -16,6 +18,32 @@ async function apiFetch(path) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || data.msg || `Request failed (${res.status})`);
   return data;
+}
+
+function downloadCSV(filename, headers, rows) {
+  const csvContent = [
+    headers.join(","),
+    ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+  ].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function downloadPDF(filename, title, headers, rows) {
+  const doc = new jsPDF();
+  doc.text(title, 14, 15);
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 20,
+  });
+  doc.save(filename);
 }
 
 // Access level badge colors
@@ -118,6 +146,18 @@ function MembersPanel({ project, onClose }) {
   const ORDER = { Owner: 0, Maintainer: 1, Developer: 2, Reporter: 3, Guest: 4 };
   filtered.sort((a, b) => (ORDER[a.access_label] ?? 9) - (ORDER[b.access_label] ?? 9));
 
+  const exportMembersCSV = () => {
+    const headers = ["Name", "Username", "Role", "Expires At"];
+    const rows = filtered.map(m => [m.name, m.username, m.access_label, m.expires_at || "Never"]);
+    downloadCSV(`${project.name}-members.csv`, headers, rows);
+  };
+
+  const exportMembersPDF = () => {
+    const headers = ["Name", "Username", "Role", "Expires At"];
+    const rows = filtered.map(m => [m.name, m.username, m.access_label, m.expires_at || "Never"]);
+    downloadPDF(`${project.name}-members.pdf`, `${project.name} Access Records`, headers, rows);
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -187,8 +227,8 @@ function MembersPanel({ project, onClose }) {
         </div>
 
         {/* Filters */}
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid #f3f4f6", display: "flex", gap: 10 }}>
-          <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid #f3f4f6", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, position: "relative", minWidth: 150 }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", pointerEvents: "none" }} />
             <input
               placeholder="Search member..."
@@ -212,6 +252,12 @@ function MembersPanel({ project, onClose }) {
             <option value="">All Roles</option>
             {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
+          <button onClick={exportMembersCSV} title="Export CSV" style={{ padding: "7px 10px", border: "1px solid #e5e7eb", borderRadius: 6, cursor: "pointer", background: "white", display: "flex", alignItems: "center", gap: 6, fontSize: 12, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"} onMouseLeave={e => e.currentTarget.style.background = "white"}>
+             <Table size={13}/> CSV
+          </button>
+          <button onClick={exportMembersPDF} title="Export PDF" style={{ padding: "7px 10px", border: "1px solid #e5e7eb", borderRadius: 6, cursor: "pointer", background: "white", display: "flex", alignItems: "center", gap: 6, fontSize: 12, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"} onMouseLeave={e => e.currentTarget.style.background = "white"}>
+             <FileText size={13}/> PDF
+          </button>
         </div>
 
         {/* Member list */}
@@ -531,6 +577,7 @@ export default function GitLabPage() {
   // User filter
   const [selectedUser, setSelectedUser] = useState(null);
   const [userProjectIds, setUserProjectIds] = useState(null); // null = no filter, Set = filtered IDs
+  const [userMemberships, setUserMemberships] = useState([]);
   const [userFilterLoading, setUserFilterLoading] = useState(false);
 
 
@@ -562,8 +609,10 @@ export default function GitLabPage() {
     try {
       const memberships = await apiFetch(`/gitlab/users/${user.id}/memberships`);
       setUserProjectIds(new Set(memberships.map(m => m.project_id)));
+      setUserMemberships(memberships);
     } catch {
       setUserProjectIds(new Set());
+      setUserMemberships([]);
     } finally {
       setUserFilterLoading(false);
     }
@@ -572,7 +621,32 @@ export default function GitLabPage() {
   const handleClearUser = useCallback(() => {
     setSelectedUser(null);
     setUserProjectIds(null);
+    setUserMemberships([]);
   }, []);
+
+  const exportProjectsCSV = () => {
+    if (selectedUser && userMemberships.length > 0) {
+      const headers = ["Project ID", "Project Name", "Path", "Access Level"];
+      const rows = userMemberships.map(m => [m.project_id, m.project_name, m.path_with_namespace, m.access_label]);
+      downloadCSV(`User-${selectedUser.username}-Access.csv`, headers, rows);
+    } else {
+      const headers = ["Project Name", "Path", "Visibility", "Default Branch"];
+      const rows = filtered.map(p => [p.name, p.path_with_namespace, p.visibility, p.default_branch || ""]);
+      downloadCSV(`GitLab-Projects.csv`, headers, rows);
+    }
+  };
+
+  const exportProjectsPDF = () => {
+    if (selectedUser && userMemberships.length > 0) {
+      const headers = ["Project ID", "Project Name", "Path", "Access Level"];
+      const rows = userMemberships.map(m => [m.project_id, m.project_name, m.path_with_namespace, m.access_label]);
+      downloadPDF(`User-${selectedUser.username}-Access.pdf`, `Access Records for ${selectedUser.name}`, headers, rows);
+    } else {
+      const headers = ["Project Name", "Path", "Visibility", "Default Branch"];
+      const rows = filtered.map(p => [p.name, p.path_with_namespace, p.visibility, p.default_branch || ""]);
+      downloadPDF(`GitLab-Projects.pdf`, `GitLab Projects Overview`, headers, rows);
+    }
+  };
 
   // Filter logic
   const filtered = projects.filter(p => {
@@ -789,7 +863,34 @@ export default function GitLabPage() {
             >
               <RefreshCw size={13} /> Refresh
             </button>
-            <span style={{ fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap" }}>
+            <div style={{ width: "1px", height: "24px", background: "#e5e7eb", margin: "0 4px" }} />
+            <button
+              onClick={exportProjectsCSV}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                border: "1px solid #e5e7eb", borderRadius: 7, background: "white",
+                fontSize: 13, fontWeight: 500, cursor: "pointer", color: "#374151",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseLeave={e => e.currentTarget.style.background = "white"}
+            >
+              <Table size={13} /> CSV
+            </button>
+            <button
+              onClick={exportProjectsPDF}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                border: "1px solid #e5e7eb", borderRadius: 7, background: "white",
+                fontSize: 13, fontWeight: 500, cursor: "pointer", color: "#374151",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseLeave={e => e.currentTarget.style.background = "white"}
+            >
+              <FileText size={13} /> PDF
+            </button>
+            <span style={{ fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap", marginLeft: "auto" }}>
               {filtered.length} of {projects.length} repos
             </span>
           </div>

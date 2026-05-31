@@ -6,3 +6,10 @@ export async function fetchDbUsers(credentials = {}) {
     body: JSON.stringify(credentials)
   });
 }
+
+export async function fetchDbUsersMulti(configIds = []) {
+  return fetchApi('/db-users/multi', {
+    method: 'POST',
+    body: JSON.stringify({ configIds })
+  });
+}
