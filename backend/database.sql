@@ -13,15 +13,16 @@ USE `manage_service_db`;
 --  Table: users
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
-  `id`            INT AUTO_INCREMENT PRIMARY KEY,
-  `username`      VARCHAR(255) UNIQUE NOT NULL,
-  `name`          VARCHAR(255) NOT NULL DEFAULT '',
-  `email`         VARCHAR(255) UNIQUE NOT NULL,
-  `password_hash` VARCHAR(255) NOT NULL,
-  `role`          VARCHAR(50)  DEFAULT 'admin',
-  `is_active`     BOOLEAN      DEFAULT TRUE,
-  `created_at`    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-  `updated_at`    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `id`               INT AUTO_INCREMENT PRIMARY KEY,
+  `username`         VARCHAR(255) UNIQUE NOT NULL,
+  `name`             VARCHAR(255) NOT NULL DEFAULT '',
+  `email`            VARCHAR(255) UNIQUE NOT NULL,
+  `password_hash`    VARCHAR(255) NOT NULL,
+  `role`             VARCHAR(50)  DEFAULT 'admin',
+  `is_active`        BOOLEAN      DEFAULT TRUE,
+  `page_permissions` JSON         NULL,        -- e.g. {"laptops":true,"servers":false,"db-users":true,"gitlab":false}
+  `created_at`       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------

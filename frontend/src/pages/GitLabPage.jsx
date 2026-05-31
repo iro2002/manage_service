@@ -178,50 +178,41 @@ function MembersPanel({ project, onClose }) {
       }}>
         {/* Panel header */}
         <div style={{
-          padding: "20px 24px", borderBottom: "1px solid #f3f4f6",
-          background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-          color: "white",
+          padding: "18px 24px", borderBottom: "1px solid #f3f4f6", background: "white",
         }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <GitBranch size={16} />
-                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Repository Access
-                </span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <GitBranch size={18} style={{ color: "#6d28d9" }} />
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700, wordBreak: "break-all" }}>
-                {project.name}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 3 }}>
-                {project.path_with_namespace}
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: "#111827", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {project.name}
+                </h2>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {project.path_with_namespace}
+                </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                width: 32, height: 32, borderRadius: 6, border: "1px solid rgba(255,255,255,0.3)",
-                background: "rgba(255,255,255,0.15)", color: "white",
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
+            <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280", flexShrink: 0 }}>
               <X size={15} />
             </button>
           </div>
 
           {/* Stats row */}
           {!loading && !error && (
-            <div style={{ display: "flex", gap: 16, marginTop: 14 }}>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>
-                <span style={{ fontWeight: 700, fontSize: 18 }}>{members.length}</span>
-                <span style={{ marginLeft: 4 }}>Members</span>
-              </div>
-              {uniqueRoles.map(role => (
-                <div key={role} style={{ fontSize: 11, opacity: 0.8 }}>
-                  {members.filter(m => m.access_label === role).length} {role}
-                </div>
-              ))}
+            <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#374151", background: "#f3f4f6", padding: "3px 10px", borderRadius: 20 }}>
+                <Users size={12} />{members.length} Members
+              </span>
+              {uniqueRoles.filter(role => members.filter(m => m.access_label === role).length > 0).map(role => {
+                const c = ACCESS_COLORS[role] || { bg: "#f3f4f6", color: "#374151", border: "#e5e7eb" };
+                return (
+                  <span key={role} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+                    {members.filter(m => m.access_label === role).length} {role}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
@@ -560,6 +551,264 @@ function ProjectCard({ project, onViewMembers }) {
   );
 }
 
+// ─── Full Access Report Modal ────────────────────────────────────────────────
+function AccessReportModal({ onClose }) {
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [search, setSearch]     = useState("");
+  const [roleFilter, setRole]   = useState("");
+  const [repoFilter, setRepo]   = useState("");
+
+  useEffect(() => {
+    apiFetch("/gitlab/access-report")
+      .then(d  => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  const rows = data?.rows || [];
+
+  const uniqueRepos = [...new Set(rows.map(r => r.project_name))].sort();
+  const uniqueRoles = ["Owner", "Maintainer", "Developer", "Reporter", "Guest"];
+
+  const filtered = rows.filter(r => {
+    const q = search.toLowerCase();
+    const matchSearch = !q ||
+      r.project_name.toLowerCase().includes(q) ||
+      r.user_name.toLowerCase().includes(q) ||
+      r.username.toLowerCase().includes(q);
+    const matchRole = !roleFilter || r.access_label === roleFilter;
+    const matchRepo = !repoFilter || r.project_name === repoFilter;
+    return matchSearch && matchRole && matchRepo;
+  });
+
+  const exportCSV = () => {
+    const headers = ["Repository", "Path", "User Name", "Username", "Access Level", "Expires At"];
+    const csvRows = filtered.map(r => [
+      r.project_name, r.path_with_namespace, r.user_name,
+      r.username, r.access_label, r.expires_at || "Never"
+    ]);
+    downloadCSV("GitLab-Full-Access-Report.csv", headers, csvRows);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("GitLab Full Access Level Report", 14, 15);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Generated: ${new Date().toLocaleString()}  |  ${filtered.length} entries`, 14, 22);
+    autoTable(doc, {
+      head: [["Repository", "Path", "User Name", "Username", "Access Level", "Expires At"]],
+      body: filtered.map(r => [
+        r.project_name, r.path_with_namespace, r.user_name,
+        r.username, r.access_label, r.expires_at || "Never"
+      ]),
+      startY: 26,
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: [79, 70, 229], fontSize: 8, fontStyle: "bold" },
+      columnStyles: {
+        0: { cellWidth: 38 },
+        1: { cellWidth: 52 },
+        4: { cellWidth: 24, halign: "center" },
+        5: { cellWidth: 26 },
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    doc.save("GitLab-Full-Access-Report.pdf");
+  };
+
+  // Role colour helper
+  const rolePill = (label) => {
+    const c = ACCESS_COLORS[label] || { bg: "#f3f4f6", color: "#374151", border: "#e5e7eb" };
+    return (
+      <span style={{
+        display: "inline-block", padding: "2px 9px", borderRadius: 20,
+        background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+        fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em",
+        whiteSpace: "nowrap",
+      }}>{label}</span>
+    );
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{
+        position: "fixed", inset: 0, zIndex: 1100,
+        background: "rgba(17,24,39,0.45)", backdropFilter: "blur(3px)",
+      }} />
+
+      {/* Modal */}
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 1101,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 16, pointerEvents: "none",
+      }}>
+        <div style={{
+          background: "white", borderRadius: 14,
+          boxShadow: "0 24px 80px rgba(0,0,0,0.22)",
+          width: "100%", maxWidth: 980, maxHeight: "90vh",
+          display: "flex", flexDirection: "column",
+          pointerEvents: "all",
+          animation: "slideInRight 0.2s ease",
+        }}>
+
+          {/* Header */}
+          <div style={{
+            padding: "18px 24px", borderBottom: "1px solid #f3f4f6",
+            background: "white", borderRadius: "14px 14px 0 0",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Shield size={18} style={{ color: "#6d28d9" }} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: "#111827", margin: 0 }}>Full Repository Access Level Report</h2>
+                <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
+                  {data ? `${data.total_projects} repositories · ${data.total_entries} access entries` : "Loading report…"}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid #e5e7eb", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b7280", flexShrink: 0 }}>
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Toolbar */}
+          <div style={{
+            padding: "12px 20px", borderBottom: "1px solid #f3f4f6",
+            display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
+            background: "#fafafa",
+          }}>
+            {/* Search */}
+            <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+              <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", pointerEvents: "none" }} />
+              <input
+                placeholder="Search repo, user, username…"
+                value={search} onChange={e => setSearch(e.target.value)}
+                style={{
+                  width: "100%", padding: "7px 10px 7px 30px", border: "1px solid #e5e7eb",
+                  borderRadius: 6, fontSize: 12, outline: "none", boxSizing: "border-box", fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            {/* Repo filter */}
+            <select value={repoFilter} onChange={e => setRepo(e.target.value)}
+              style={{ padding: "7px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, outline: "none", background: "white", fontFamily: "inherit", maxWidth: 200 }}>
+              <option value="">All Repositories</option>
+              {uniqueRepos.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+
+            {/* Role filter */}
+            <select value={roleFilter} onChange={e => setRole(e.target.value)}
+              style={{ padding: "7px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12, outline: "none", background: "white", fontFamily: "inherit" }}>
+              <option value="">All Roles</option>
+              {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+
+            <div style={{ width: 1, height: 24, background: "#e5e7eb" }} />
+
+            {/* Export buttons */}
+            <button onClick={exportCSV} disabled={!data} style={{
+              padding: "7px 12px", border: "1px solid #e5e7eb", borderRadius: 6,
+              cursor: "pointer", background: "white", display: "flex", alignItems: "center",
+              gap: 6, fontSize: 12, fontFamily: "inherit", transition: "background 0.15s",
+            }} onMouseEnter={e => e.currentTarget.style.background="#f0fdf4"}
+               onMouseLeave={e => e.currentTarget.style.background="white"}>
+              <Table size={13} style={{ color: "#16a34a" }} /> Export CSV
+            </button>
+            <button onClick={exportPDF} disabled={!data} style={{
+              padding: "7px 12px", border: "1px solid #e5e7eb", borderRadius: 6,
+              cursor: "pointer", background: "white", display: "flex", alignItems: "center",
+              gap: 6, fontSize: 12, fontFamily: "inherit", transition: "background 0.15s",
+            }} onMouseEnter={e => e.currentTarget.style.background="#fef3c7"}
+               onMouseLeave={e => e.currentTarget.style.background="white"}>
+              <FileText size={13} style={{ color: "#d97706" }} /> Export PDF
+            </button>
+
+            <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: "auto", whiteSpace: "nowrap" }}>
+              {filtered.length} entries
+            </span>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {loading && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 64, gap: 14, color: "#6b7280" }}>
+                <Loader2 size={32} className="animate-spin" style={{ color: "#6366f1" }} />
+                <div style={{ fontSize: 14, fontWeight: 500 }}>Fetching all repositories and members…</div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>This may take a moment depending on the number of repos.</div>
+              </div>
+            )}
+            {error && (
+              <div style={{ margin: 20, padding: 16, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#dc2626", fontSize: 13 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}><AlertCircle size={15} /> Error loading report</div>
+                <div style={{ marginTop: 6, color: "#7f1d1d" }}>{error}</div>
+              </div>
+            )}
+            {!loading && !error && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb", position: "sticky", top: 0, zIndex: 5 }}>
+                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Repository</th>
+                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>Path</th>
+                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>User</th>
+                    <th style={{ padding: "10px 16px", textAlign: "center", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Access Level</th>
+                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Expires At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={5} style={{ textAlign: "center", padding: 48, color: "#9ca3af" }}>No entries found.</td></tr>
+                  ) : filtered.map((r, i) => (
+                    <tr key={`${r.project_id}-${r.user_id}-${i}`}
+                      style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#eef2ff"}
+                      onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "white" : "#fafafa"}
+                    >
+                      <td style={{ padding: "9px 16px", fontWeight: 600, color: "#111827", whiteSpace: "nowrap" }}>{r.project_name}</td>
+                      <td style={{ padding: "9px 16px", color: "#6b7280", fontSize: 11, fontFamily: "monospace", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.path_with_namespace}</td>
+                      <td style={{ padding: "9px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Avatar name={r.user_name} avatarUrl={r.avatar_url} size={26} />
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#111827" }}>{r.user_name}</div>
+                            <div style={{ fontSize: 10, color: "#9ca3af" }}>@{r.username}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: "9px 16px", textAlign: "center" }}>{rolePill(r.access_label)}</td>
+                      <td style={{ padding: "9px 16px", color: r.expires_at ? "#dc2626" : "#9ca3af", fontSize: 11 }}>
+                        {r.expires_at ? new Date(r.expires_at).toLocaleDateString() : "Never"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: "12px 20px", borderTop: "1px solid #f3f4f6",
+            display: "flex", justifyContent: "flex-end", background: "#fafafa",
+            borderRadius: "0 0 14px 14px",
+          }}>
+            <button onClick={onClose} style={{
+              padding: "8px 20px", border: "1px solid #e5e7eb", borderRadius: 7,
+              background: "white", cursor: "pointer", fontSize: 13, fontFamily: "inherit",
+              fontWeight: 500, color: "#374151",
+            }}>Close</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Main GitLab Page ─────────────────────────────────────────────────────────
 export default function GitLabPage() {
   const [projects, setProjects] = useState([]);
@@ -579,6 +828,9 @@ export default function GitLabPage() {
   const [userProjectIds, setUserProjectIds] = useState(null); // null = no filter, Set = filtered IDs
   const [userMemberships, setUserMemberships] = useState([]);
   const [userFilterLoading, setUserFilterLoading] = useState(false);
+
+  // Full Access Report
+  const [showAccessReport, setShowAccessReport] = useState(false);
 
 
   const load = useCallback(async () => {
@@ -863,6 +1115,23 @@ export default function GitLabPage() {
             >
               <RefreshCw size={13} /> Refresh
             </button>
+
+            {/* Full Access Report button */}
+            <button
+              onClick={() => setShowAccessReport(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                border: "1px solid #e5e7eb", borderRadius: 7, background: "white",
+                fontSize: 13, fontWeight: 500, cursor: "pointer", color: "#374151",
+                transition: "all 0.15s", whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseLeave={e => e.currentTarget.style.background = "white"}
+              title="Generate a full report of all repos × all users × permission levels"
+            >
+              <Shield size={13} /> Full Access Report
+            </button>
+
             <div style={{ width: "1px", height: "24px", background: "#e5e7eb", margin: "0 4px" }} />
             <button
               onClick={exportProjectsCSV}
@@ -944,6 +1213,11 @@ export default function GitLabPage() {
           project={selectedProject}
           onClose={() => setSelectedProject(null)}
         />
+      )}
+
+      {/* Full Access Report modal */}
+      {showAccessReport && (
+        <AccessReportModal onClose={() => setShowAccessReport(false)} />
       )}
     </div>
   );

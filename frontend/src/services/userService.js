@@ -21,11 +21,19 @@ export async function updateUser(id, data) {
   });
 }
 
-// ─── Reset user password ────────────────────────────────────────────────────
-export async function resetUserPassword(id, password) {
+// ─── Reset user password (requires admin's own password) ──────────────────────────────
+export async function resetUserPassword(id, password, adminPassword) {
   return fetchApi(`/users/${id}/reset-password`, {
     method: 'PUT',
-    body: JSON.stringify({ password })
+    body: JSON.stringify({ password, adminPassword })
+  });
+}
+
+// ─── Update page permissions for a user ────────────────────────────────────────
+export async function updatePermissions(id, page_permissions) {
+  return fetchApi(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ page_permissions })
   });
 }
 

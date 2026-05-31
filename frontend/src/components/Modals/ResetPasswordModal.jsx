@@ -1,33 +1,41 @@
 import { useState } from "react";
-import { X, Loader2, KeyRound, Eye, EyeOff } from "lucide-react";
+import { X, Loader2, KeyRound, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { resetUserPassword } from "../../services/userService";
 import toast from "react-hot-toast";
 
 export default function ResetPasswordModal({ user, onClose }) {
+  const [adminPassword, setAdminPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showAdminPass, setShowAdminPass] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+
+    if (!adminPassword) {
+      setError("Please enter your admin password to authorise this action.");
+      return;
+    }
     if (!password) {
-      setError("Password is required.");
+      setError("New password is required.");
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("New password must be at least 6 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError("New passwords do not match.");
       return;
     }
 
     setLoading(true);
     try {
-      await resetUserPassword(user.id, password);
+      await resetUserPassword(user.id, password, adminPassword);
       toast.success(`Password reset for ${user.name || user.email}`);
       onClose(true);
     } catch (err) {
@@ -48,10 +56,7 @@ export default function ResetPasswordModal({ user, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div style={{
-              width: 36, height: 36, background: "#fce7f3", borderRadius: 8,
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
+            <div style={{ width: 36, height: 36, background: "#fce7f3", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <KeyRound size={18} style={{ color: "#db2777" }} />
             </div>
             <div>
@@ -66,14 +71,43 @@ export default function ResetPasswordModal({ user, onClose }) {
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+
+          {/* Error */}
           {error && (
-            <div style={{
-              padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca",
-              borderRadius: 8, fontSize: 13, color: "#dc2626", fontWeight: 500
-            }}>
+            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 13, color: "#dc2626", fontWeight: 500 }}>
               {error}
             </div>
           )}
+
+          {/* Admin password confirmation */}
+          <div style={{ background: "#fef9f0", border: "1px solid #fde68a", borderRadius: 8, padding: "12px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <ShieldAlert size={14} style={{ color: "#d97706" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#92400e" }}>Admin Authorisation Required</span>
+            </div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+              Your Admin Password
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showAdminPass ? "text" : "password"}
+                value={adminPassword}
+                onChange={(e) => { setAdminPassword(e.target.value); setError(""); }}
+                placeholder="Enter your current password"
+                className="form-input"
+                id="reset-admin-pass-input"
+                autoFocus
+                style={{ paddingRight: 40 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAdminPass(!showAdminPass)}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2 }}
+              >
+                {showAdminPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
 
           {/* New Password */}
           <div>
@@ -86,16 +120,12 @@ export default function ResetPasswordModal({ user, onClose }) {
                 placeholder="Minimum 6 characters"
                 className="form-input"
                 id="reset-pass-new-input"
-                autoFocus
                 style={{ paddingRight: 40 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                style={{
-                  position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2
-                }}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 2 }}
               >
                 {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -104,12 +134,12 @@ export default function ResetPasswordModal({ user, onClose }) {
 
           {/* Confirm Password */}
           <div>
-            <label className="form-label" style={{ display: "block", marginBottom: 6 }}>Confirm Password</label>
+            <label className="form-label" style={{ display: "block", marginBottom: 6 }}>Confirm New Password</label>
             <input
               type={showPass ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
-              placeholder="Re-enter password"
+              placeholder="Re-enter new password"
               className="form-input"
               id="reset-pass-confirm-input"
             />

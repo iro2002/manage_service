@@ -189,13 +189,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div
-      style={{
-        background: "#f8fafc",
-        minHeight: "100vh",
-        padding: "20px 16px",
-      }}
-    >
+    <>
       <div
         style={{
           maxWidth: 1100,
@@ -433,6 +427,6 @@ export default function HomePage() {
           }
         `}
       </style>
-    </div>
+    </>
   );
 }

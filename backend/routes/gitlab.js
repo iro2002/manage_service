@@ -243,4 +243,68 @@ router.get('/users/:id/memberships', async (req, res) => {
 
 
 
+// ─── GET /api/gitlab/access-report ───────────────────────────────────────────
+// Returns a flat list of { repo, user, permission } for ALL projects & members.
+// Used for the full cross-repo access level report.
+router.get('/access-report', async (req, res) => {
+  try {
+    const { baseUrl, headers } = getGitlabConfig();
+
+    // 1. Fetch all projects
+    const allProjects = await fetchAllPages(
+      `${baseUrl}/projects?simple=true&membership=false`,
+      headers
+    );
+
+    // 2. For each project, fetch all members in parallel (batched)
+    const BATCH = 8;
+    const rows = [];
+
+    for (let i = 0; i < allProjects.length; i += BATCH) {
+      const batch = allProjects.slice(i, i + BATCH);
+      const results = await Promise.all(
+        batch.map(async (project) => {
+          try {
+            const membersRes = await fetch(
+              `${baseUrl}/projects/${project.id}/members/all?per_page=100`,
+              { headers }
+            );
+            if (!membersRes.ok) return [];
+            const members = await membersRes.json();
+            if (!Array.isArray(members)) return [];
+            return members.map(m => ({
+              project_id:           project.id,
+              project_name:         project.name,
+              path_with_namespace:  project.path_with_namespace,
+              user_id:              m.id,
+              user_name:            m.name,
+              username:             m.username,
+              avatar_url:           m.avatar_url,
+              access_level:         m.access_level,
+              access_label:         ACCESS_LEVEL_MAP[m.access_level] || `Level ${m.access_level}`,
+              expires_at:           m.expires_at || null,
+            }));
+          } catch {
+            return [];
+          }
+        })
+      );
+      results.forEach(r => rows.push(...r));
+    }
+
+    // Sort: by repo name, then by access level desc, then by user name
+    rows.sort((a, b) => {
+      if (a.project_name < b.project_name) return -1;
+      if (a.project_name > b.project_name) return  1;
+      if (b.access_level !== a.access_level) return b.access_level - a.access_level;
+      return a.user_name.localeCompare(b.user_name);
+    });
+
+    res.json({ rows, total_projects: allProjects.length, total_entries: rows.length });
+  } catch (err) {
+    console.error('[GitLab] /access-report error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

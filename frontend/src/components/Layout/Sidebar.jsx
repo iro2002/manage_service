@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { LayoutDashboard, LogOut, Monitor, ChevronLeft, ChevronRight, Users, Database, GitBranch, Home, Laptop, Server } from "lucide-react";
 
 export default function Sidebar({ collapsed, onToggle }) {
-  const { user, logout } = useAuth();
+  const { user, logout, canAccess } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -14,7 +14,6 @@ export default function Sidebar({ collapsed, onToggle }) {
   const initials = user?.email?.charAt(0).toUpperCase() ?? "A";
   const emailDisplay = user?.email ?? "";
   const isSuperAdmin = user?.role === "super_admin";
-  const canViewGitLab = user?.role === "super_admin" || user?.role === "global_admin";
 
   return (
     <aside
@@ -64,48 +63,55 @@ export default function Sidebar({ collapsed, onToggle }) {
           {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Home</span>}
         </NavLink>
 
-        <NavLink
-          to="/laptops"
-          title="Laptop Management"
-          className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
-          style={{ justifyContent: collapsed ? "center" : "flex-start" }}
-        >
-          <Laptop size={16} style={{ flexShrink: 0 }} />
-          {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Laptop Management</span>}
-        </NavLink>
+        {canAccess("laptops") && (
+          <NavLink
+            to="/laptops"
+            title="Laptop Management"
+            className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <Laptop size={16} style={{ flexShrink: 0 }} />
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Laptop Management</span>}
+          </NavLink>
+        )}
 
         {isSuperAdmin && (
-          <>
-            <NavLink
-              to="/users"
-              title="User Management"
-              className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
-              style={{ justifyContent: collapsed ? "center" : "flex-start" }}
-            >
-              <Users size={16} style={{ flexShrink: 0 }} />
-              {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>User Management</span>}
-            </NavLink>
-            <NavLink
-              to="/servers"
-              title="Server Management"
-              className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
-              style={{ justifyContent: collapsed ? "center" : "flex-start" }}
-            >
-              <Server size={16} style={{ flexShrink: 0 }} />
-              {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Server Management</span>}
-            </NavLink>
-              <NavLink
-              to="/db-users"
-              title="Database Privileges"
-              className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
-              style={{ justifyContent: collapsed ? "center" : "flex-start" }}
-            >
-              <Database size={16} style={{ flexShrink: 0 }} />
-              {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Database Privileges</span>}
-            </NavLink>
-          </>
+          <NavLink
+            to="/users"
+            title="User Management"
+            className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <Users size={16} style={{ flexShrink: 0 }} />
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>User Management</span>}
+          </NavLink>
         )}
-        {canViewGitLab && (
+
+        {canAccess("servers") && (
+          <NavLink
+            to="/servers"
+            title="Server Management"
+            className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <Server size={16} style={{ flexShrink: 0 }} />
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Server Management</span>}
+          </NavLink>
+        )}
+
+        {canAccess("db-users") && (
+          <NavLink
+            to="/db-users"
+            title="Database Privileges"
+            className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <Database size={16} style={{ flexShrink: 0 }} />
+            {!collapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>Database Privileges</span>}
+          </NavLink>
+        )}
+
+        {canAccess("gitlab") && (
           <NavLink
             to="/gitlab"
             title="GitLab Access"

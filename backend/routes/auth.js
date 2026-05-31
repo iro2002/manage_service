@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const [users] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
+    const [users] = await pool.query('SELECT id, username, name, email, password_hash, role, is_active, page_permissions FROM users WHERE username = ?', [username]);
     if (users.length === 0) {
       return res.status(401).json({ code: 'auth/user-not-found', error: 'No account found with this username.' });
     }
@@ -31,13 +31,24 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ code: 'auth/wrong-password', error: 'Incorrect password.' });
     }
 
+    // Parse page_permissions from JSON string if stored as string
+    let pagePerm = null;
+    if (user.page_permissions) {
+      try {
+        pagePerm = typeof user.page_permissions === 'string'
+          ? JSON.parse(user.page_permissions)
+          : user.page_permissions;
+      } catch { pagePerm = null; }
+    }
+
     const payload = {
       user: {
         id: user.id,
         username: user.username,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        page_permissions: pagePerm
       }
     };
 

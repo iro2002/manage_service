@@ -18,7 +18,7 @@ const SIDEBAR_FULL = 240;
 const SIDEBAR_MINI = 64;
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, canAccess } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const sidebarWidth = collapsed ? SIDEBAR_MINI : SIDEBAR_FULL;
 
@@ -46,9 +46,13 @@ function AppRoutes() {
                 path="/laptops"
                 element={
                   <ProtectedRoute>
-                    <AppPage title="Laptop Management" subtitle="Track and manage company laptops">
-                      <DashboardPage />
-                    </AppPage>
+                    {canAccess("laptops") ? (
+                      <AppPage title="Laptop Management" subtitle="Track and manage company laptops">
+                        <DashboardPage />
+                      </AppPage>
+                    ) : (
+                      <Navigate to="/" replace />
+                    )}
                   </ProtectedRoute>
                 }
               />
@@ -67,10 +71,24 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/servers"
+                element={
+                  <ProtectedRoute>
+                    {canAccess("servers") ? (
+                      <AppPage title="Server Management" subtitle="Manage and monitor company servers">
+                        <ServersPage />
+                      </AppPage>
+                    ) : (
+                      <Navigate to="/" replace />
+                    )}
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/db-users"
                 element={
                   <ProtectedRoute>
-                    {user.role === "super_admin" ? (
+                    {canAccess("db-users") ? (
                       <AppPage title="Database Privileges" subtitle="View MySQL database user access">
                         <DbUsersPage />
                       </AppPage>
@@ -81,25 +99,10 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/servers"
-                element={
-                  <ProtectedRoute>
-                    {user.role === "super_admin" ? (
-                      <AppPage title="Server Management" subtitle="Manage and monitor company servers">
-                        <ServersPage />
-                      </AppPage>
-                    ) : (
-                      <Navigate to="/" replace />
-                    )}
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
                 path="/gitlab"
                 element={
                   <ProtectedRoute>
-                    {(user.role === "super_admin" || user.role === "global_admin") ? (
+                    {canAccess("gitlab") ? (
                       <AppPage title="GitLab Repository Access" subtitle="View repository access and member permissions">
                         <GitLabPage />
                       </AppPage>

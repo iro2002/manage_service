@@ -264,10 +264,8 @@ export default function ServersPage() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString() : "—";
 
   return (
-    <div className="p-6 md:p-8 flex-1 overflow-y-auto bg-gray-50">
+    <>
       {/* ─── HEADER ──────────────────────────────────────────────────────── */}
-      
-
       {/* ─── METRICS ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
@@ -331,6 +329,14 @@ export default function ServersPage() {
             <option value="overdue">Overdue (Red)</option>
           </select>
         </div>
+        <button
+          id="add-server-btn"
+          onClick={() => openAddEdit()}
+          className="btn btn-primary flex items-center gap-2"
+        >
+          <Plus size={15} />
+          Add Server
+        </button>
       </div>
 
       {/* ─── TABLE ───────────────────────────────────────────────────────── */}
@@ -721,6 +727,6 @@ export default function ServersPage() {
           confirmStyle="danger"
         />
       )}
-    </div>
+    </>
   );
 }

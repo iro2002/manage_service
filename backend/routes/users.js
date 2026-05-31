@@ -14,9 +14,16 @@ router.use(requireSuperAdmin);
 router.get('/', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, username, name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC'
+      'SELECT id, username, name, email, role, is_active, page_permissions, created_at, updated_at FROM users ORDER BY created_at DESC'
     );
-    res.json(users);
+    // Parse page_permissions JSON for each user
+    const parsed = users.map(u => ({
+      ...u,
+      page_permissions: u.page_permissions
+        ? (typeof u.page_permissions === 'string' ? JSON.parse(u.page_permissions) : u.page_permissions)
+        : null
+    }));
+    res.json(parsed);
   } catch (err) {
     console.error('Error fetching users:', err.message);
     res.status(500).json({ error: 'Failed to fetch users.' });
@@ -75,7 +82,7 @@ router.post('/', async (req, res) => {
 // ─── PUT /api/users/:id — Update user details ──────────────────────────────
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { username, name, email, role, is_active } = req.body;
+  const { username, name, email, role, is_active, page_permissions } = req.body;
 
   try {
     // Check user exists
@@ -121,11 +128,12 @@ router.put('/:id', async (req, res) => {
     const updates = [];
     const values = [];
 
-    if (username !== undefined) { updates.push('username = ?'); values.push(username.trim()); }
-    if (name !== undefined) { updates.push('name = ?'); values.push(name.trim()); }
-    if (email !== undefined) { updates.push('email = ?'); values.push(email.trim().toLowerCase()); }
-    if (role !== undefined) { updates.push('role = ?'); values.push(role); }
-    if (is_active !== undefined) { updates.push('is_active = ?'); values.push(is_active); }
+    if (username !== undefined)         { updates.push('username = ?');          values.push(username.trim()); }
+    if (name !== undefined)             { updates.push('name = ?');              values.push(name.trim()); }
+    if (email !== undefined)            { updates.push('email = ?');             values.push(email.trim().toLowerCase()); }
+    if (role !== undefined)             { updates.push('role = ?');              values.push(role); }
+    if (is_active !== undefined)        { updates.push('is_active = ?');         values.push(is_active); }
+    if (page_permissions !== undefined) { updates.push('page_permissions = ?'); values.push(JSON.stringify(page_permissions)); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No fields to update.' });
@@ -150,13 +158,25 @@ router.put('/:id', async (req, res) => {
 // ─── PUT /api/users/:id/reset-password — Reset user password ────────────────
 router.put('/:id/reset-password', async (req, res) => {
   const { id } = req.params;
-  const { password } = req.body;
+  const { password, adminPassword } = req.body;
 
   if (!password || password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   }
 
+  if (!adminPassword) {
+    return res.status(400).json({ error: 'Your current password is required to confirm this action.' });
+  }
+
   try {
+    // Verify the calling admin's own password
+    const [admins] = await pool.query('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
+    if (admins.length === 0) return res.status(401).json({ error: 'Admin account not found.' });
+    const adminMatch = await bcrypt.compare(adminPassword, admins[0].password_hash);
+    if (!adminMatch) {
+      return res.status(401).json({ error: 'Incorrect admin password. Action not authorised.' });
+    }
+
     const [users] = await pool.query('SELECT id FROM users WHERE id = ?', [id]);
     if (users.length === 0) {
       return res.status(404).json({ error: 'User not found.' });

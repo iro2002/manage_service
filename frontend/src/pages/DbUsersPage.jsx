@@ -138,7 +138,7 @@ export default function DbUsersPage() {
   const [userFilter, setUserFilter] = useState("");
   const [onlySuper, setOnlySuper] = useState(false);
   const [onlyGlobal, setOnlyGlobal] = useState(false);
-  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [showAllUsers, setShowAllUsers] = useState(true);
 
   // ─── Columns Configuration State ──────────────────────────────────────────
   const [colOpen, setColOpen] = useState(false);
@@ -423,24 +423,11 @@ export default function DbUsersPage() {
   const setNS = f => e => setNewServer(s => ({ ...s, [f]: e.target.value }));
 
   return (
-    <div className="p-6 md:p-8 flex-1 overflow-y-auto">
+    <>
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
       `}</style>
-
-      {/* ─── Top Page Actions Header ───────────────────────────────────── */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-     
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setShowAddProfile(true)} className="btn btn-secondary text-sm flex items-center gap-2">
-            <UserPlus size={15} /> Register Profile
-          </button>
-          <button onClick={() => setShowProfilesModal(true)} className="btn btn-secondary text-sm flex items-center gap-2">
-            <Users size={15} /> View Profiles
-          </button>
-        </div>
-      </div>
 
       {/* ─── Server Selector Panel ──────────────────────────────────────── */}
       <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "18px 20px", marginBottom: 18, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
@@ -450,7 +437,23 @@ export default function DbUsersPage() {
             Database Servers
             <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>— click to toggle; select multiple to view side-by-side</span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setShowAddProfile(true)}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "white", fontSize: 12, cursor: "pointer", color: "#374151", transition: "background 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseLeave={e => e.currentTarget.style.background = "white"}
+            >
+              <UserPlus size={13} style={{ color: "#4f46e5" }} /> Register Profile
+            </button>
+            <button
+              onClick={() => setShowProfilesModal(true)}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "white", fontSize: 12, cursor: "pointer", color: "#374151", transition: "background 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseLeave={e => e.currentTarget.style.background = "white"}
+            >
+              <Users size={13} style={{ color: "#4f46e5" }} /> View Profiles
+            </button>
             <button
               onClick={refreshAll}
               style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "white", fontSize: 12, cursor: "pointer", color: "#374151", transition: "background 0.15s" }}
@@ -860,6 +863,6 @@ export default function DbUsersPage() {
           confirmStyle="danger"
         />
       )}
-    </div>
+    </>
   );
 }

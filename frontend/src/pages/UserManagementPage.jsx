@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { UserPlus, Search, Pencil, KeyRound, Trash2, ShieldCheck, Shield, AlertCircle, RefreshCw } from "lucide-react";
+import { UserPlus, Search, Pencil, KeyRound, Trash2, ShieldCheck, Shield, AlertCircle, RefreshCw, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { fetchUsers, deleteUser, updateUser } from "../services/userService";
 import AddUserModal from "../components/Modals/AddUserModal";
 import EditUserModal from "../components/Modals/EditUserModal";
 import ResetPasswordModal from "../components/Modals/ResetPasswordModal";
+import PermissionsModal from "../components/Modals/PermissionsModal";
 import toast from "react-hot-toast";
 
 export default function UserManagementPage() {
@@ -16,16 +17,16 @@ export default function UserManagementPage() {
   const [modal, setModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
+  const loadUsers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await fetchUsers();
       setUsers(data || []);
       setApiError(null);
     } catch (err) {
-      setApiError(err.message || "Failed to load users.");
+      if (!silent) setApiError(err.message || "Failed to load users.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -189,6 +190,7 @@ export default function UserManagementPage() {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Pages</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
@@ -254,6 +256,23 @@ export default function UserManagementPage() {
                         </span>
                       </td>
 
+                      {/* Pages access */}
+                      <td>
+                        {u.role === "super_admin" ? (
+                          <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600, background: "#f5f3ff", padding: "3px 8px", borderRadius: 99, border: "1px solid #ede9fe" }}>All Pages</span>
+                        ) : (() => {
+                          const pages = ["laptops", "servers", "db-users", "gitlab"];
+                          const granted = pages.filter(k => u.page_permissions?.[k]);
+                          return granted.length === 0 ? (
+                            <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 600, background: "#fef2f2", padding: "3px 8px", borderRadius: 99, border: "1px solid #fecaca" }}>No Access</span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600, background: "#dcfce7", padding: "3px 8px", borderRadius: 99, border: "1px solid #bbf7d0" }}>
+                              {granted.length}/{pages.length} pages
+                            </span>
+                          );
+                        })()}
+                      </td>
+
                       {/* Status badge */}
                       <td>
                         <span style={{
@@ -284,6 +303,15 @@ export default function UserManagementPage() {
                             id={`edit-user-${u.id}-btn`}
                           >
                             <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setModal({ type: "permissions", user: u })}
+                            className="btn btn-ghost btn-icon"
+                            title="Page Permissions"
+                            id={`perms-user-${u.id}-btn`}
+                            style={{ color: "#7c3aed" }}
+                          >
+                            <Lock size={14} />
                           </button>
                           <button
                             onClick={() => setModal({ type: "resetPassword", user: u })}
@@ -337,6 +365,23 @@ export default function UserManagementPage() {
       )}
       {modal?.type === "resetPassword" && (
         <ResetPasswordModal user={modal.user} onClose={handleCloseModal} />
+      )}
+      {modal?.type === "permissions" && (
+        <PermissionsModal
+          user={modal.user}
+          onClose={() => setModal(null)}
+          onSaved={(updatedPerms) => {
+            // Silently refresh the table AND keep modal.user in sync
+            loadUsers(true).then(() => {
+              if (updatedPerms !== undefined) {
+                setModal(prev => prev ? {
+                  ...prev,
+                  user: { ...prev.user, page_permissions: updatedPerms }
+                } : null);
+              }
+            });
+          }}
+        />
       )}
 
       {/* Delete Confirmation */}
