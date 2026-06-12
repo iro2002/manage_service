@@ -261,7 +261,7 @@ export default function UserManagementPage() {
                         {u.role === "super_admin" ? (
                           <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600, background: "#f5f3ff", padding: "3px 8px", borderRadius: 99, border: "1px solid #ede9fe" }}>All Pages</span>
                         ) : (() => {
-                          const pages = ["laptops", "servers", "db-users", "gitlab"];
+                          const pages = ["laptops", "servers", "db-users", "gitlab", "openproject"];
                           const granted = pages.filter(k => u.page_permissions?.[k]);
                           return granted.length === 0 ? (
                             <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 600, background: "#fef2f2", padding: "3px 8px", borderRadius: 99, border: "1px solid #fecaca" }}>No Access</span>

@@ -55,6 +55,14 @@ router.get('/', (req, res) => {
       color: '#609926',
       category: 'Development',
     },
+    {
+      key: 'openproject',
+      label: 'OpenProject',
+      description: 'Project management & work packages',
+      url: process.env.TOOL_OPENPROJECT_URL || process.env.OPENPROJECT_URL || '',
+      color: '#1a67a3',
+      category: 'Project Management',
+    },
   ].filter(t => t.url); // only include tools with URLs configured
 
   res.json({

@@ -10,6 +10,7 @@ import UserManagementPage from "./pages/UserManagementPage";
 import DbUsersPage from "./pages/DbUsersPage";
 import ServersPage from "./pages/ServersPage";
 import GitLabPage from "./pages/GitLabPage";
+import OpenProjectPage from "./pages/OpenProjectPage";
 import HomePage from "./pages/HomePage";
 import AppPage from "./components/Layout/AppPage";
 import "./App.css";
@@ -105,6 +106,20 @@ function AppRoutes() {
                     {canAccess("gitlab") ? (
                       <AppPage title="GitLab Repository Access" subtitle="View repository access and member permissions">
                         <GitLabPage />
+                      </AppPage>
+                    ) : (
+                      <Navigate to="/" replace />
+                    )}
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/openproject"
+                element={
+                  <ProtectedRoute>
+                    {canAccess("openproject") ? (
+                      <AppPage title="OpenProject Access" subtitle="View project memberships and role permissions">
+                        <OpenProjectPage />
                       </AppPage>
                     ) : (
                       <Navigate to="/" replace />

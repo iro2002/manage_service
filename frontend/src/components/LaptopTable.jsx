@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   UserCheck, CornerDownLeft,
-  PackageX, Clock, Search, ChevronDown, Plus, Edit3, Columns
+  PackageX, Clock, Search, ChevronDown, Plus, Edit3, Columns, FileText, BarChart2
 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { format } from "date-fns";
@@ -190,7 +190,8 @@ export default function LaptopTable({
   laptops, search, setSearch, statusFilter, setStatusFilter,
   departmentFilter, setDepartmentFilter, modelFilter, setModelFilter, currentUserFilter, setCurrentUserFilter,
   startDate, setStartDate, endDate, setEndDate, existingModels = [], existingUsers = [],
-  onAssign, onReturnMS, onReturnVendor, onHistory, onAdd, onEdit, onBulkEmail
+  onAssign, onReturnMS, onReturnVendor, onHistory, onAdd, onEdit, onBulkEmail, onGenerateBill, onModelCount,
+  readOnly = false
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [visibleColumns, setVisibleColumns] = useState(new Set(AVAILABLE_COLUMNS.map(c => c.id)));
@@ -393,7 +394,7 @@ export default function LaptopTable({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 && !readOnly && (
             <button onClick={handleBulkEmail} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: 6, color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}>
               Email ({selectedIds.size})
             </button>
@@ -408,15 +409,50 @@ export default function LaptopTable({
             PDF
           </button>
 
+          {/* Model Count */}
           <button
-            className="btn btn-primary"
-            onClick={onAdd}
-            id="add-laptop-btn"
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
+            className="btn btn-secondary"
+            onClick={onModelCount}
+            id="model-count-btn"
+            title="View laptop count by model"
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              color: "#0369a1", borderColor: "#bae6fd", background: "#f0f9ff",
+            }}
           >
-            <Plus size={14} />
-            Add Laptop
+            <BarChart2 size={14} />
+            Model Count
           </button>
+
+          {/* Generate Bill */}
+          {!readOnly && (
+            <button
+              className="btn btn-secondary"
+              onClick={onGenerateBill}
+              id="generate-bill-btn"
+              title="Generate vendor rental bill"
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                color: "#6d28d9", borderColor: "#c4b5fd", background: "#f5f3ff",
+              }}
+            >
+              <FileText size={14} />
+              Generate Bill
+            </button>
+          )}
+
+          {/* Add Laptop */}
+          {!readOnly && (
+            <button
+              className="btn btn-primary"
+              onClick={onAdd}
+              id="add-laptop-btn"
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Plus size={14} />
+              Add Laptop
+            </button>
+          )}
         </div>
       </div>
 
@@ -441,7 +477,7 @@ export default function LaptopTable({
               {visibleColumns.has("adminAccount") && <th>Admin Account</th>}
               {visibleColumns.has("massStorage") && <th>Mass Storage</th>}
               {visibleColumns.has("comments") && <th>Comments</th>}
-              <th style={{ width: 110, textAlign: "center" }}>Actions</th>
+              {!readOnly && <th style={{ width: 110, textAlign: "center" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -483,16 +519,18 @@ export default function LaptopTable({
                       {fmt(laptop.comments)}
                     </span>
                   </td>}
-                  <td style={{ padding: "14px 20px", textAlign: "right" }}>
-                    <ActionMenu
-                      laptop={laptop}
-                      onAssign={() => onAssign(laptop)}
-                      onReturnMS={() => onReturnMS(laptop)}
-                      onReturnVendor={() => onReturnVendor(laptop)}
-                      onHistory={() => onHistory(laptop)}
-                      onEdit={() => onEdit(laptop)}
-                    />
-                  </td>
+                  {!readOnly && (
+                    <td style={{ padding: "14px 20px", textAlign: "right" }}>
+                      <ActionMenu
+                        laptop={laptop}
+                        onAssign={() => onAssign(laptop)}
+                        onReturnMS={() => onReturnMS(laptop)}
+                        onReturnVendor={() => onReturnVendor(laptop)}
+                        onHistory={() => onHistory(laptop)}
+                        onEdit={() => onEdit(laptop)}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))
             )}

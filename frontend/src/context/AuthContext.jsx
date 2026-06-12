@@ -9,6 +9,7 @@ export const DEFAULT_PERMISSIONS = {
   servers: false,
   "db-users": false,
   gitlab: false,
+  openproject: false,
 };
 
 export function AuthProvider({ children }) {
@@ -62,16 +63,29 @@ export function AuthProvider({ children }) {
   /**
    * Returns true if the current user can access a given page key.
    * super_admin always has full access.
+   * Permission value: false = no access, "read" = read-only, true = full access
    */
   const canAccess = (pageKey) => {
     if (!user) return false;
     if (user.role === "super_admin") return true;
     const perms = user.page_permissions || DEFAULT_PERMISSIONS;
-    return !!perms[pageKey];
+    const val = perms[pageKey];
+    return val === true || val === "read";
+  };
+
+  /**
+   * Returns true if user has full (write) access to a page.
+   * super_admin always returns true.
+   */
+  const canWrite = (pageKey) => {
+    if (!user) return false;
+    if (user.role === "super_admin") return true;
+    const perms = user.page_permissions || DEFAULT_PERMISSIONS;
+    return perms[pageKey] === true;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, canAccess }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, canAccess, canWrite }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { CheckCircle, Users, Building2, PackageX, AlertCircle, RefreshCw } from "lucide-react";
 import { fetchLaptops } from "../services/laptopService";
+import { useAuth } from "../context/AuthContext";
 import LaptopTable from "../components/LaptopTable";
 import AddLaptopModal from "../components/Modals/AddLaptopModal";
 import AssignLaptopModal from "../components/Modals/AssignLaptopModal";
@@ -8,9 +9,13 @@ import ReturnModal from "../components/Modals/ReturnModal";
 import HistoryModal from "../components/Modals/HistoryModal";
 import EditLaptopModal from "../components/Modals/EditLaptopModal";
 import BulkEmailModal from "../components/Modals/BulkEmailModal";
+import BillGeneratorModal from "../components/Modals/BillGeneratorModal";
+import ModelCountModal from "../components/Modals/ModelCountModal";
 import { DEPARTMENTS } from "../services/laptopService";
 
 export default function DashboardPage() {
+  const { canWrite } = useAuth();
+  const isReadOnly = !canWrite("laptops");
   const [laptops, setLaptops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
@@ -196,6 +201,7 @@ export default function DashboardPage() {
         setStartDate={setStartDate}
         endDate={endDate}
         setEndDate={setEndDate}
+        readOnly={isReadOnly}
         onAdd={() => setModal({ type: "add" })}
         onAssign={(l) => setModal({ type: "assign", laptop: l })}
         onReturnMS={(l) => setModal({ type: "returnMS", laptop: l })}
@@ -203,6 +209,8 @@ export default function DashboardPage() {
         onHistory={(l) => setModal({ type: "history", laptop: l })}
         onEdit={(l) => setModal({ type: "edit", laptop: l })}
         onBulkEmail={(selectedLaptops) => setModal({ type: "bulkEmail", laptops: selectedLaptops })}
+        onGenerateBill={() => setModal({ type: "bill" })}
+        onModelCount={() => setModal({ type: "modelCount" })}
       />
 
       {/* Modals */}
@@ -213,6 +221,8 @@ export default function DashboardPage() {
       {modal?.type === "history"      && <HistoryModal laptop={modal.laptop} onClose={handleCloseModal} />}
       {modal?.type === "edit"         && <EditLaptopModal laptop={modal.laptop} existingModels={existingModels} existingVendors={existingVendors} existingRates={existingRates} onClose={handleCloseModal} />}
       {modal?.type === "bulkEmail"    && <BulkEmailModal selectedLaptops={modal.laptops} onClose={handleCloseModal} />}
+      {modal?.type === "bill"         && <BillGeneratorModal laptops={laptops} onClose={handleCloseModal} />}
+      {modal?.type === "modelCount"   && <ModelCountModal laptops={laptops} onClose={handleCloseModal} />}
     </>
   );
 }
